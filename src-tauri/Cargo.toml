@@ -1,0 +1,37 @@
+[package]
+name = "index-media-server"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "index_media_server_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "unstable"] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+warp = "0.3"
+base64 = "0.21"
+uuid = { version = "1", features = ["v4", "serde"] }
+image = "0.24"
+argon2 = "0.5"
+rcgen = "0.13"
+tokio-rustls = "0.25"
+rustls = "0.22"
+rustls-pemfile = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+
