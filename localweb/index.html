@@ -140,18 +140,24 @@
                             <div class="grid grid-cols-3 gap-4 mb-4">
                                 <!-- Videos -->
                                 <div class="media-type-option" data-type="videos">
-                                    <img src="./images/icon_movie.png" alt="Videos" class="w-16 h-16 mx-auto rounded-lg border-2 border-transparent hover:border-blue-500 cursor-pointer">
+                                    <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl flex items-center justify-center border-2 border-transparent hover:border-white  hover:from-blue-500 hover:to-blue-600 cursor-pointer bg-origin-border hover:scale-105">
+                                        <img src="./images/icon_movie.svg" alt="Videos" class="w-10 h-10">
+                                    </div>
                                     <p class="text-sm text-gray-300 mt-2 text-center">Videos</p>
-                                </div>
-                                <!-- Photos -->
-                                <div class="media-type-option" data-type="photos">
-                                    <img src="./images/icon_image.png" alt="Photos" class="w-16 h-16 mx-auto rounded-lg border-2 border-transparent hover:border-blue-500 cursor-pointer">
-                                    <p class="text-sm text-gray-300 mt-2 text-center">Photos</p>
                                 </div>
                                 <!-- Music -->
                                 <div class="media-type-option" data-type="music">
-                                    <img src="./images/icon_music.png" alt="Music" class="w-16 h-16 mx-auto rounded-lg border-2 border-transparent hover:border-blue-500 cursor-pointer">
+                                    <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-r from-green-600 to-green-700 rounded-xl flex items-center justify-center border-2 border-transparent hover:border-white hover:from-green-500 hover:to-green-600 cursor-pointer bg-origin-border hover:scale-105">
+                                        <img src="./images/icon_music.svg" alt="Music" class="w-10 h-10">
+                                    </div>
                                     <p class="text-sm text-gray-300 mt-2 text-center">Music</p>
+                                </div>
+                                <!-- Photos -->
+                                <div class="media-type-option" data-type="photos">
+                                    <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-r from-purple-600 to-purple-700 rounded-xl flex items-center justify-center border-2 border-transparent hover:border-white hover:from-purple-500 hover:to-purple-600 cursor-pointer bg-origin-border hover:scale-105">
+                                        <img src="./images/icon_image.svg" alt="Photos" class="w-10 h-10">
+                                    </div>
+                                    <p class="text-sm text-gray-300 mt-2 text-center">Photos</p>
                                 </div>
                             </div>
                         </div>
@@ -181,21 +187,29 @@
                             <div class="grid grid-cols-5 gap-4 mb-4">
                                 <!-- Default Icons -->
                                 <div class="icon-option" data-icon="home">
-                                    <img src="./images/icon_home.png" alt="Home Icon" class="w-16 h-16 mx-auto rounded-lg border-2 border-transparent hover:border-blue-500 cursor-pointer">
+                                    <div class="w-16 h-16 mx-auto bg-gradient-to-r from-slate-600 to-slate-700 rounded-xl flex items-center justify-center cursor-pointer hover:from-slate-500 hover:to-slate-600 transition-all duration-200 border-2 border-transparent hover:border-white bg-origin-border hover:scale-105">
+                                        <img src="./images/icon_home.svg" alt="Home Icon" class="w-8 h-8">
+                                    </div>
                                 </div>
                                 <div class="icon-option" data-icon="movie">
-                                    <img src="./images/icon_movie.png" alt="Movie Icon" class="w-16 h-16 mx-auto rounded-lg border-2 border-transparent hover:border-blue-500 cursor-pointer">
-                                </div>
-                                <div class="icon-option" data-icon="image">
-                                    <img src="./images/icon_image.png" alt="Image Icon" class="w-16 h-16 mx-auto rounded-lg border-2 border-transparent hover:border-blue-500 cursor-pointer">
+                                    <div class="w-16 h-16 mx-auto bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl flex items-center justify-center cursor-pointer hover:from-blue-500 hover:to-blue-600 transition-all duration-200 border-2 border-transparent hover:border-white bg-origin-border hover:scale-105">
+                                        <img src="./images/icon_movie.svg" alt="Movie Icon" class="w-8 h-8">
+                                    </div>
                                 </div>
                                 <div class="icon-option" data-icon="music">
-                                    <img src="./images/icon_music.png" alt="Music Icon" class="w-16 h-16 mx-auto rounded-lg border-2 border-transparent hover:border-blue-500 cursor-pointer">
+                                    <div class="w-16 h-16 mx-auto bg-gradient-to-r from-green-600 to-green-700 rounded-xl flex items-center justify-center cursor-pointer hover:from-green-500 hover:to-green-600 transition-all duration-200 border-2 border-transparent hover:border-white bg-origin-border hover:scale-105">
+                                        <img src="./images/icon_music.svg" alt="Music Icon" class="w-8 h-8">
+                                    </div>
+                                </div>
+                                <div class="icon-option" data-icon="image">
+                                    <div class="w-16 h-16 mx-auto bg-gradient-to-r from-purple-600 to-purple-700 rounded-xl flex items-center justify-center cursor-pointer hover:from-purple-500 hover:to-purple-600 transition-all duration-200 border-2 border-transparent hover:border-white bg-origin-border hover:scale-105">
+                                        <img src="./images/icon_image.svg" alt="Image Icon" class="w-8 h-8">
+                                    </div>
                                 </div>
                                 
                                 <!-- Custom Upload Option -->
                                 <div class="icon-option" data-icon="custom">
-                                    <div class="w-16 h-16 mx-auto rounded-lg border-2 border-dashed border-gray-400 hover:border-blue-500 cursor-pointer flex items-center justify-center bg-gray-700 hover:bg-gray-600 transition-colors">
+                                    <div class="w-16 h-16 mx-auto rounded-lg border-2 border-dashed border-gray-400 hover:border-white cursor-pointer flex items-center justify-center bg-gray-700 hover:bg-gray-600 transition-colors hover:scale-105 overflow-hidden">
                                         <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
                                         </svg>

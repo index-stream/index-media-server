@@ -478,18 +478,18 @@ export default class SetupPage extends Page {
 
         // Remove selection from all options
         document.querySelectorAll('.icon-option').forEach(option => {
-            const img = option.querySelector('img') || option.querySelector('div');
+            const img = option.querySelector('div');
             if (img) {
-                img.classList.remove('border-blue-500');
+                img.classList.remove('border-white');
                 img.classList.add('border-transparent');
             }
         });
 
         // Add selection to clicked option
-        const img = optionElement.querySelector('img') || optionElement.querySelector('div');
+        const img = optionElement.querySelector('div');
         if (img) {
             img.classList.remove('border-transparent');
-            img.classList.add('border-blue-500');
+            img.classList.add('border-white');
         }
 
         // Update selected icon
@@ -502,18 +502,18 @@ export default class SetupPage extends Page {
         
         // Remove selection from all options
         document.querySelectorAll('.media-type-option').forEach(option => {
-            const img = option.querySelector('img');
+            const img = option.querySelector('div');
             if (img) {
-                img.classList.remove('border-blue-500');
+                img.classList.remove('border-white');
                 img.classList.add('border-transparent');
             }
         });
 
         // Add selection to clicked option
-        const img = optionElement.querySelector('img');
+        const img = optionElement.querySelector('div');
         if (img) {
             img.classList.remove('border-transparent');
-            img.classList.add('border-blue-500');
+            img.classList.add('border-white');
         }
 
         // Update selected media type
@@ -524,9 +524,9 @@ export default class SetupPage extends Page {
     initializeMediaTypeSelection() {
         // Clear all selections first
         document.querySelectorAll('.media-type-option').forEach(option => {
-            const img = option.querySelector('img');
+            const img = option.querySelector('div');
             if (img) {
-                img.classList.remove('border-blue-500');
+                img.classList.remove('border-white');
                 img.classList.add('border-transparent');
             }
         });
@@ -534,10 +534,10 @@ export default class SetupPage extends Page {
         // Select the default media type (videos)
         const videosOption = document.querySelector('.media-type-option[data-type="videos"]');
         if (videosOption) {
-            const img = videosOption.querySelector('img');
+            const img = videosOption.querySelector('div');
             if (img) {
                 img.classList.remove('border-transparent');
-                img.classList.add('border-blue-500');
+                img.classList.add('border-white');
             }
         }
     }
@@ -547,9 +547,9 @@ export default class SetupPage extends Page {
         if (file) {
             // Clear default icon selection
             document.querySelectorAll('.icon-option').forEach(option => {
-                const img = option.querySelector('img') || option.querySelector('div');
+                const img = option.querySelector('div');
                 if (img) {
-                    img.classList.remove('border-blue-500');
+                    img.classList.remove('border-white');
                     img.classList.add('border-transparent');
                 }
             });
@@ -563,9 +563,9 @@ export default class SetupPage extends Page {
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         // Replace the pencil icon with the uploaded image
-                        customDiv.innerHTML = `<img src="${e.target.result}" alt="Custom icon" class="w-16 h-16 rounded-lg object-contain">`;
+                        customDiv.innerHTML = `<img src="${e.target.result}" alt="Custom icon" class="w-full h-full object-contain">`;
                         customDiv.classList.remove('border-dashed', 'border-gray-400', 'bg-gray-700', 'border-transparent');
-                        customDiv.classList.add('border-solid', 'border-blue-500');
+                        customDiv.classList.add('border-solid', 'border-white');
                     };
                     reader.readAsDataURL(file);
                 }
@@ -593,7 +593,7 @@ export default class SetupPage extends Page {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
                     </svg>
                 `;
-                customDiv.classList.remove('border-solid', 'border-blue-500');
+                customDiv.classList.remove('border-solid', 'border-white');
                 customDiv.classList.add('border-dashed', 'border-gray-400', 'bg-gray-700', 'border-transparent');
             }
         }
@@ -783,30 +783,63 @@ export default class SetupPage extends Page {
         });
     }
 
-    async onFinishSetup() {
-        // Handle custom icon file conversion to base64
-        let customIconFile = null;
-        if (this.selectedIcon === 'custom') {
-            const file = this.getCustomFile();
-            if (file) {
-                customIconFile = await this.fileToBase64(file);
+    setButtonLoading(buttonId, isLoading) {
+        const button = document.getElementById(buttonId);
+        if (!button) return;
+
+        if (isLoading) {
+            button.disabled = true;
+            button.classList.add('opacity-50', 'cursor-not-allowed');
+            
+            // Store original text
+            button.dataset.originalText = button.textContent;
+            
+            // Add loading spinner
+            button.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            `;
+        } else {
+            button.disabled = false;
+            button.classList.remove('opacity-50', 'cursor-not-allowed');
+            
+            // Restore original text
+            if (button.dataset.originalText) {
+                button.textContent = button.dataset.originalText;
+                delete button.dataset.originalText;
             }
         }
+    }
 
-        const config = {
-            name: this.serverName,
-            profiles: this.profiles,
-            password: this.serverPassword,
-            indexes: [{
-                name: this.indexName,
-                mediaType: this.mediaType,
-                icon: this.selectedIcon,
-                folders: this.selectedFolders,
-                ...(customIconFile ? { customIconFile } : {})
-            }]
-        };
-
+    async onFinishSetup() {
+        // Set loading state for finish setup button
+        this.setButtonLoading('finish-setup-btn', true);
+        
         try {
+            // Handle custom icon file conversion to base64
+            let customIconFile = null;
+            if (this.selectedIcon === 'custom') {
+                const file = this.getCustomFile();
+                if (file) {
+                    customIconFile = await this.fileToBase64(file);
+                }
+            }
+
+            const config = {
+                name: this.serverName,
+                profiles: this.profiles,
+                password: this.serverPassword,
+                indexes: [{
+                    name: this.indexName,
+                    mediaType: this.mediaType,
+                    icon: this.selectedIcon,
+                    folders: this.selectedFolders,
+                    ...(customIconFile ? { customIconFile } : {})
+                }]
+            };
+
             console.log('Saving configuration...', config);
             
             // Store the config via Backend call
@@ -824,18 +857,32 @@ export default class SetupPage extends Page {
         } catch (error) {
             console.error('Error saving configuration:', error);
             alert('Failed to save configuration. Please try again.');
+        } finally {
+            // Clear loading state
+            this.setButtonLoading('finish-setup-btn', false);
         }
     }
 
     async onSkipClick() {
-        const config = {
-            name: this.serverName,
-            profiles: this.profiles,
-            password: this.serverPassword,
-            indexes: []
-        };
-        await Backend.saveConfiguration(config);
-        PageController.showPage(PAGES.HOME);
+        // Set loading state for skip button
+        this.setButtonLoading('skip-btn', true);
+        
+        try {
+            const config = {
+                name: this.serverName,
+                profiles: this.profiles,
+                password: this.serverPassword,
+                indexes: []
+            };
+            await Backend.saveConfiguration(config);
+            PageController.showPage(PAGES.HOME);
+        } catch (error) {
+            console.error('Error saving configuration:', error);
+            alert('Failed to save configuration. Please try again.');
+        } finally {
+            // Clear loading state
+            this.setButtonLoading('skip-btn', false);
+        }
     }
 
     resetForm() {
@@ -882,9 +929,9 @@ export default class SetupPage extends Page {
 
         // Reset icon selection
         document.querySelectorAll('.icon-option').forEach(option => {
-            const img = option.querySelector('img') || option.querySelector('div');
+            const img = option.querySelector('div');
             if (img) {
-                img.classList.remove('border-blue-500');
+                img.classList.remove('border-white');
                 img.classList.add('border-transparent');
             }
         });
@@ -900,9 +947,9 @@ export default class SetupPage extends Page {
 
         // Reset media type selection
         document.querySelectorAll('.media-type-option').forEach(option => {
-            const img = option.querySelector('img');
+            const img = option.querySelector('div');
             if (img) {
-                img.classList.remove('border-blue-500');
+                img.classList.remove('border-white');
                 img.classList.add('border-transparent');
             }
         });
@@ -910,10 +957,10 @@ export default class SetupPage extends Page {
         // Select videos by default
         const videosOption = document.querySelector('.media-type-option[data-type="videos"]');
         if (videosOption) {
-            const img = videosOption.querySelector('img');
+            const img = videosOption.querySelector('div');
             if (img) {
                 img.classList.remove('border-transparent');
-                img.classList.add('border-blue-500');
+                img.classList.add('border-white');
             }
         }
     }
