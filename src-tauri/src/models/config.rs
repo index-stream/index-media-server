@@ -22,6 +22,8 @@ pub struct MediaIndex {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Configuration {
+    pub id: String,
+    pub name: String,
     pub profiles: Vec<Profile>,
     pub password: String,
     pub indexes: Vec<MediaIndex>,
@@ -49,6 +51,7 @@ pub struct IncomingMediaIndex {
 
 #[derive(Debug, Deserialize)]
 pub struct IncomingConfiguration {
+    pub name: String,
     pub profiles: Vec<IncomingProfile>,
     pub password: String,
     pub indexes: Vec<IncomingMediaIndex>,

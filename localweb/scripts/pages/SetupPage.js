@@ -6,6 +6,7 @@ import Backend from '../clients/Backend.js';
 export default class SetupPage extends Page {
     constructor() {
         super(PAGES.SETUP);
+        this.serverName = 'My Index Media'; // Store server name
         this.profiles = []; // Store multiple profiles
         this.currentProfile = { name: '', color: '#3B82F6' }; // Current profile being edited
         this.serverPassword = ''; // Store server password
@@ -21,65 +22,72 @@ export default class SetupPage extends Page {
         const setupBtn = document.getElementById('setup-btn');
         setupBtn?.addEventListener('click', () => this.onSetupBtnClick());
 
-        // Step 1: Profile management
+        // Step 1: Server name form
+        const serverNameForm = document.getElementById('server-name-form');
+        serverNameForm?.addEventListener('submit', (e) => this.handleServerNameSubmit(e));
+
+        // Step 2: Profile management
         const addProfileBtn = document.getElementById('add-profile-btn');
         addProfileBtn?.addEventListener('click', () => this.addNewProfile());
 
-        const continueBtn = document.getElementById('continue-to-index-name-btn');
+        const continueBtn = document.getElementById('continue-to-password-btn');
         continueBtn?.addEventListener('click', () => this.handleProfileContinue());
 
-        // Step 2: Password form
+        const backToServerNameBtn = document.getElementById('back-to-server-name-btn');
+        backToServerNameBtn?.addEventListener('click', () => this.backToServerNameStep());
+
+        // Step 3: Password form
         const passwordForm = document.getElementById('password-form');
         passwordForm?.addEventListener('submit', (e) => this.handlePasswordSubmit(e));
 
         const backToProfilesBtn = document.getElementById('back-to-profiles-btn');
         backToProfilesBtn?.addEventListener('click', () => this.backToProfileStep());
 
-        // Step 3: Name form
+        // Step 4: Name form
         const nameForm = document.getElementById('name-form');
         nameForm?.addEventListener('submit', (e) => this.handleNameSubmit(e));
 
-        // Step 3: Skip (same as skip from step 2)
+        // Step 4: Skip (same as skip from step 3)
         const skipBtn = document.getElementById('skip-btn');
         skipBtn?.addEventListener('click', () => this.onSkipClick());
 
-        // Step 3: Back to password
+        // Step 4: Back to password
         const backToPasswordBtn = document.getElementById('back-to-password-btn');
         backToPasswordBtn?.addEventListener('click', () => this.backToPasswordStep());
 
-        // Step 3: Media type selection
+        // Step 4: Media type selection
         const mediaTypeOptions = document.querySelectorAll('.media-type-option');
         mediaTypeOptions.forEach(option => {
             option.addEventListener('click', () => this.selectMediaType(option));
         });
 
-        // Step 4: Icon selection
+        // Step 5: Icon selection
         const iconOptions = document.querySelectorAll('.icon-option');
         iconOptions.forEach(option => {
             option.addEventListener('click', () => this.selectIcon(option));
         });
 
-        // Step 4: Custom file upload (hidden input)
+        // Step 5: Custom file upload (hidden input)
         const customIconInput = document.getElementById('custom-icon');
         customIconInput?.addEventListener('change', (e) => this.handleCustomIcon(e));
 
-        // Step 4: Icon form
+        // Step 5: Icon form
         const iconForm = document.getElementById('icon-form');
         iconForm?.addEventListener('submit', (e) => this.handleIconSubmit(e));
 
-        // Step 4: Back to name
+        // Step 5: Back to name
         const backToNameBtn = document.getElementById('back-to-name-btn');
         backToNameBtn?.addEventListener('click', () => this.backToNameStep());
 
-        // Step 5: Add folders button
+        // Step 6: Add folders button
         const addFoldersBtn = document.getElementById('add-folders-btn');
         addFoldersBtn?.addEventListener('click', () => this.onAddFoldersClick());
 
-        // Step 5: Folders form
+        // Step 6: Folders form
         const foldersForm = document.getElementById('folders-form');
         foldersForm?.addEventListener('submit', (e) => this.handleFoldersSubmit(e));
 
-        // Step 5: Back to icon
+        // Step 6: Back to icon
         const backToIconBtn = document.getElementById('back-to-icon-btn');
         backToIconBtn?.addEventListener('click', () => this.backToIconStep());
     }
@@ -95,12 +103,42 @@ export default class SetupPage extends Page {
         this.showStep1();
     }
 
+    handleServerNameSubmit(event) {
+        event.preventDefault();
+        
+        const formData = new FormData(event.target);
+        this.serverName = formData.get('server-name') || 'My Index Media';
+        
+        console.log('Server name entered:', this.serverName);
+        this.showStep2();
+    }
+
     showStep1() {
         const initialContent = document.getElementById('setup-initial-content');
         const step1 = document.getElementById('setup-step-1');
         
         if (initialContent && step1) {
             initialContent.classList.add('hidden');
+            step1.classList.remove('hidden');
+        }
+    }
+
+    showStep2() {
+        const step1 = document.getElementById('setup-step-1');
+        const step2 = document.getElementById('setup-step-2');
+        
+        if (step1 && step2) {
+            step1.classList.add('hidden');
+            step2.classList.remove('hidden');
+        }
+    }
+
+    backToServerNameStep() {
+        const step1 = document.getElementById('setup-step-1');
+        const step2 = document.getElementById('setup-step-2');
+        
+        if (step1 && step2) {
+            step2.classList.add('hidden');
             step1.classList.remove('hidden');
         }
     }
@@ -271,7 +309,7 @@ export default class SetupPage extends Page {
     }
 
     updateContinueButton() {
-        const continueBtn = document.getElementById('continue-to-index-name-btn');
+        const continueBtn = document.getElementById('continue-to-password-btn');
         const errorMsg = document.getElementById('profiles-error');
         
         if (continueBtn && errorMsg) {
@@ -296,7 +334,7 @@ export default class SetupPage extends Page {
         }
         
         console.log('Profiles data:', this.profiles);
-        this.showStep2();
+        this.showStep3();
     }
 
     handlePasswordSubmit(event) {
@@ -325,35 +363,25 @@ export default class SetupPage extends Page {
         this.serverPassword = password || '';
         
         console.log('Password set:', this.serverPassword ? 'Yes' : 'No');
-        this.showStep3();
+        this.showStep4();
     }
 
     backToPasswordStep() {
+        const step3 = document.getElementById('setup-step-3');
+        const step4 = document.getElementById('setup-step-4');
+        
+        if (step3 && step4) {
+            step4.classList.add('hidden');
+            step3.classList.remove('hidden');
+        }
+    }
+
+    backToProfileStep() {
         const step2 = document.getElementById('setup-step-2');
         const step3 = document.getElementById('setup-step-3');
         
         if (step2 && step3) {
             step3.classList.add('hidden');
-            step2.classList.remove('hidden');
-        }
-    }
-
-    backToProfileStep() {
-        const step1 = document.getElementById('setup-step-1');
-        const step2 = document.getElementById('setup-step-2');
-        
-        if (step1 && step2) {
-            step2.classList.add('hidden');
-            step1.classList.remove('hidden');
-        }
-    }
-
-    showStep2() {
-        const step1 = document.getElementById('setup-step-1');
-        const step2 = document.getElementById('setup-step-2');
-        
-        if (step1 && step2) {
-            step1.classList.add('hidden');
             step2.classList.remove('hidden');
         }
     }
@@ -396,7 +424,23 @@ export default class SetupPage extends Page {
             step5.classList.remove('hidden');
             
             // Update the display name in step 5
-            const nameDisplay = document.getElementById('index-name-display-step5');
+            const nameDisplay = document.getElementById('index-name-display');
+            if (nameDisplay) {
+                nameDisplay.textContent = this.indexName;
+            }
+        }
+    }
+
+    showStep6() {
+        const step5 = document.getElementById('setup-step-5');
+        const step6 = document.getElementById('setup-step-6');
+        
+        if (step5 && step6) {
+            step5.classList.add('hidden');
+            step6.classList.remove('hidden');
+            
+            // Update the display name in step 6
+            const nameDisplay = document.getElementById('index-name-display-step6');
             if (nameDisplay) {
                 nameDisplay.textContent = this.indexName;
             }
@@ -408,12 +452,12 @@ export default class SetupPage extends Page {
 
 
     backToNameStep() {
-        const step3 = document.getElementById('setup-step-3');
         const step4 = document.getElementById('setup-step-4');
+        const step5 = document.getElementById('setup-step-5');
         
-        if (step3 && step4) {
-            step4.classList.add('hidden');
-            step3.classList.remove('hidden');
+        if (step4 && step5) {
+            step5.classList.add('hidden');
+            step4.classList.remove('hidden');
         }
     }
 
@@ -562,7 +606,7 @@ export default class SetupPage extends Page {
         this.indexName = formData.get('index-name') || 'Home';
         
         console.log('Index name entered:', this.indexName);
-        this.showStep4();
+        this.showStep5();
     }
 
     handleIconSubmit(event) {
@@ -583,7 +627,7 @@ export default class SetupPage extends Page {
 
     onContinueToFolders() {
         console.log('Continue to folders clicked - processing setup...');
-        this.showStep5();
+        this.showStep6();
     }
 
     showStep3() {
@@ -606,12 +650,12 @@ export default class SetupPage extends Page {
     }
 
     backToIconStep() {
-        const step4 = document.getElementById('setup-step-4');
         const step5 = document.getElementById('setup-step-5');
+        const step6 = document.getElementById('setup-step-6');
         
-        if (step4 && step5) {
-            step5.classList.add('hidden');
-            step4.classList.remove('hidden');
+        if (step5 && step6) {
+            step6.classList.add('hidden');
+            step5.classList.remove('hidden');
         }
     }
 
@@ -750,6 +794,7 @@ export default class SetupPage extends Page {
         }
 
         const config = {
+            name: this.serverName,
             profiles: this.profiles,
             password: this.serverPassword,
             indexes: [{
@@ -784,6 +829,7 @@ export default class SetupPage extends Page {
 
     async onSkipClick() {
         const config = {
+            name: this.serverName,
             profiles: this.profiles,
             password: this.serverPassword,
             indexes: []
@@ -799,16 +845,23 @@ export default class SetupPage extends Page {
         const step2 = document.getElementById('setup-step-2');
         const step3 = document.getElementById('setup-step-3');
         const step4 = document.getElementById('setup-step-4');
+        const step5 = document.getElementById('setup-step-5');
+        const step6 = document.getElementById('setup-step-6');
         
-        if (initialContent && step1 && step2 && step3 && step4) {
+        if (initialContent && step1 && step2 && step3 && step4 && step5 && step6) {
             initialContent.classList.remove('hidden');
             step1.classList.add('hidden');
             step2.classList.add('hidden');
             step3.classList.add('hidden');
             step4.classList.add('hidden');
+            step5.classList.add('hidden');
+            step6.classList.add('hidden');
         }
 
         // Reset form values
+        const serverNameInput = document.getElementById('server-name');
+        if (serverNameInput) serverNameInput.value = 'My Index Media';
+
         const nameInput = document.getElementById('index-name');
         if (nameInput) nameInput.value = 'Home';
 
@@ -816,6 +869,7 @@ export default class SetupPage extends Page {
         if (customIconInput) customIconInput.value = '';
 
         // Reset stored values
+        this.serverName = 'My Index Media';
         this.profiles = [];
         this.indexName = 'Home';
         this.mediaType = 'videos';

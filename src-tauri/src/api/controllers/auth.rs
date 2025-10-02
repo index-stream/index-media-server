@@ -1,18 +1,11 @@
 use crate::api::router::{HttpRequest, HttpResponse, extract_user_agent};
 use crate::models::config::Configuration;
+use crate::utils::token::{generate_secure_token, add_token_to_storage, token_exists};
 use argon2::{Argon2, PasswordVerifier};
 use argon2::password_hash::PasswordHashString;
-use uuid::Uuid;
 use serde_json;
 use std::future::Future;
 use std::pin::Pin;
-
-/// Token storage structure
-#[derive(serde::Serialize, serde::Deserialize)]
-struct TokenInfo {
-    user_agent: String,
-    created_at: String,
-}
 
 /// Load configuration from file
 async fn load_configuration() -> Result<Option<Configuration>, Box<dyn std::error::Error + Send + Sync>> {
@@ -50,68 +43,6 @@ fn verify_password(password: &str, hash: &str) -> bool {
     argon2.verify_password(password.as_bytes(), &parsed_hash.password_hash()).is_ok()
 }
 
-/// Get the data directory path for certificate storage
-fn get_cert_data_dir() -> Result<std::path::PathBuf, Box<dyn std::error::Error + Send + Sync>> {
-    let mut data_dir = std::env::current_dir()?;
-    data_dir.push("data");
-    data_dir.push("certs");
-    
-    // Create the directory if it doesn't exist
-    std::fs::create_dir_all(&data_dir)?;
-    
-    Ok(data_dir)
-}
-
-/// Get the full path for a certificate file
-fn get_cert_file_path(filename: &str) -> Result<std::path::PathBuf, Box<dyn std::error::Error + Send + Sync>> {
-    let mut path = get_cert_data_dir()?;
-    path.push(filename);
-    Ok(path)
-}
-
-/// Load token storage from file
-fn load_token_storage() -> Result<std::collections::HashMap<String, TokenInfo>, std::io::Error> {
-    let token_file_path = get_cert_file_path("tokens.json").map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e)))?;
-    
-    if !token_file_path.exists() {
-        return Ok(std::collections::HashMap::new());
-    }
-    
-    let content = std::fs::read_to_string(&token_file_path)?;
-    let tokens: std::collections::HashMap<String, TokenInfo> = serde_json::from_str(&content)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, format!("{}", e)))?;
-    Ok(tokens)
-}
-
-/// Save token storage to file
-fn save_token_storage(tokens: &std::collections::HashMap<String, TokenInfo>) -> Result<(), std::io::Error> {
-    let token_file_path = get_cert_file_path("tokens.json").map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e)))?;
-    let content = serde_json::to_string_pretty(tokens)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, format!("{}", e)))?;
-    std::fs::write(&token_file_path, content)?;
-    Ok(())
-}
-
-/// Add a new token to storage
-fn add_token_to_storage(token: &str, user_agent: &str) -> Result<(), std::io::Error> {
-    let mut tokens = load_token_storage()?;
-    
-    let token_info = TokenInfo {
-        user_agent: user_agent.to_string(),
-        created_at: chrono::Utc::now().to_rfc3339(),
-    };
-    
-    tokens.insert(token.to_string(), token_info);
-    save_token_storage(&tokens)?;
-    Ok(())
-}
-
-/// Check if a token exists in storage
-fn token_exists(token: &str) -> Result<bool, std::io::Error> {
-    let tokens = load_token_storage()?;
-    Ok(tokens.contains_key(token))
-}
-
 /// Handle login endpoint
 pub fn handle_login(request: &HttpRequest) -> Pin<Box<dyn Future<Output = Result<HttpResponse, Box<dyn std::error::Error + Send + Sync>>> + Send + 'static>> {
     let request = request.clone();
@@ -130,8 +61,8 @@ pub fn handle_login(request: &HttpRequest) -> Pin<Box<dyn Future<Output = Result
         match load_configuration().await? {
             Some(config) => {
                 if verify_password(password, &config.password) {
-                    // Generate auth token
-                    let auth_token = Uuid::new_v4().to_string();
+                    // Generate cryptographically secure auth token
+                    let auth_token = generate_secure_token();
                     
                     // Store token with user agent
                     if let Err(e) = add_token_to_storage(&auth_token, &user_agent) {
@@ -141,7 +72,10 @@ pub fn handle_login(request: &HttpRequest) -> Pin<Box<dyn Future<Output = Result
                     let response_body = serde_json::json!({
                         "success": true,
                         "message": "Login successful",
-                        "token": auth_token
+                        "token": auth_token,
+                        "serverId": config.id,
+                        "serverName": config.name,
+                        "profiles": config.profiles
                     });
                     
                     Ok(HttpResponse::new(200)
@@ -160,23 +94,15 @@ pub fn handle_login(request: &HttpRequest) -> Pin<Box<dyn Future<Output = Result
                 }
             }
             None => {
-                // No configuration file, allow access without password
-                let auth_token = Uuid::new_v4().to_string();
-                
-                // Store token with user agent
-                if let Err(e) = add_token_to_storage(&auth_token, &user_agent) {
-                    eprintln!("Warning: Failed to store token: {}", e);
-                }
-                
+                // No configuration file, server not initialized
                 let response_body = serde_json::json!({
-                    "success": true,
-                    "message": "Login successful (no password required)",
-                    "token": auth_token
+                    "success": false,
+                    "error": "Server not initialized",
+                    "message": "Please configure the server before attempting to authenticate"
                 });
                 
-                Ok(HttpResponse::new(200)
+                Ok(HttpResponse::new(503)
                     .with_cors()
-                    .with_header("Set-Cookie", &format!("auth_token={}; HttpOnly; Secure; SameSite=Strict", auth_token))
                     .with_json_body(&response_body.to_string()))
             }
         }
@@ -216,34 +142,55 @@ pub fn handle_token_check(request: &HttpRequest) -> Pin<Box<dyn Future<Output = 
                 .with_json_body(&response_body.to_string()));
         }
         
-        match token_exists(token) {
-            Ok(exists) => {
-                if exists {
-                    let response_body = serde_json::json!({
-                        "success": true,
-                        "token": token,
-                        "valid": true
-                    });
-                    
-                    Ok(HttpResponse::new(200)
-                        .with_cors()
-                        .with_json_body(&response_body.to_string()))
-                } else {
-                    let response_body = serde_json::json!({
-                        "error": "Token not found"
-                    });
-                    
-                    Ok(HttpResponse::new(404)
-                        .with_cors()
-                        .with_json_body(&response_body.to_string()))
+        // Check if server is configured first
+        match load_configuration().await? {
+            Some(config) => {
+                // Server is configured, check token validity
+                match token_exists(token) {
+                    Ok(exists) => {
+                        if exists {
+                            let response_body = serde_json::json!({
+                                "success": true,
+                                "token": token,
+                                "valid": true,
+                                "serverId": config.id,
+                                "serverName": config.name,
+                                "profiles": config.profiles
+                            });
+                            
+                            Ok(HttpResponse::new(200)
+                                .with_cors()
+                                .with_json_body(&response_body.to_string()))
+                        } else {
+                            let response_body = serde_json::json!({
+                                "error": "Token not found"
+                            });
+                            
+                            Ok(HttpResponse::new(404)
+                                .with_cors()
+                                .with_json_body(&response_body.to_string()))
+                        }
+                    }
+                    Err(_) => {
+                        let response_body = serde_json::json!({
+                            "error": "Server error"
+                        });
+                        
+                        Ok(HttpResponse::new(500)
+                            .with_cors()
+                            .with_json_body(&response_body.to_string()))
+                    }
                 }
             }
-            Err(_) => {
+            None => {
+                // No configuration file, server not initialized
                 let response_body = serde_json::json!({
-                    "error": "Server error"
+                    "success": false,
+                    "error": "Server not initialized",
+                    "message": "Please configure the server before attempting to authenticate"
                 });
                 
-                Ok(HttpResponse::new(500)
+                Ok(HttpResponse::new(503)
                     .with_cors()
                     .with_json_body(&response_body.to_string()))
             }

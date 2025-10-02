@@ -160,6 +160,8 @@ pub async fn handle_save_configuration(
     
     // Create final configuration
     let final_config = Configuration {
+        id: Uuid::new_v4().to_string(),
+        name: incoming_config.name,
         profiles: incoming_config.profiles.into_iter().map(|p| crate::models::config::Profile {
             id: p.id.unwrap_or_else(|| Uuid::new_v4().to_string()),
             name: p.name,
