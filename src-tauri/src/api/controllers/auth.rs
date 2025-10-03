@@ -1,5 +1,5 @@
 use crate::api::router::{HttpRequest, HttpResponse, extract_user_agent};
-use crate::models::config::Configuration;
+use crate::models::config::{Configuration, MediaIndex};
 use crate::utils::token::{generate_secure_token, add_token_to_storage, token_exists};
 use argon2::{Argon2, PasswordVerifier};
 use argon2::password_hash::PasswordHashString;
@@ -18,6 +18,18 @@ async fn load_configuration() -> Result<Option<Configuration>, Box<dyn std::erro
     let config_json = std::fs::read_to_string(config_path)?;
     let config: Configuration = serde_json::from_str(&config_json)?;
     Ok(Some(config))
+}
+
+/// Create filtered indexes with only id, name, mediaType, and icon
+fn create_filtered_indexes(indexes: &[MediaIndex]) -> Vec<serde_json::Value> {
+    indexes.iter().map(|index| {
+        serde_json::json!({
+            "id": index.id,
+            "name": index.name,
+            "mediaType": index.media_type,
+            "icon": index.icon
+        })
+    }).collect()
 }
 
 /// Verify password against stored hash
@@ -99,7 +111,8 @@ pub fn handle_login(request: &HttpRequest) -> Pin<Box<dyn Future<Output = Result
                 "token": auth_token,
                 "serverId": config.id,
                 "serverName": config.name,
-                "profiles": config.profiles
+                "profiles": config.profiles,
+                "indexes": create_filtered_indexes(&config.indexes)
             });
             
             Ok(HttpResponse::new(200)
@@ -164,7 +177,8 @@ pub fn handle_token_check(request: &HttpRequest) -> Pin<Box<dyn Future<Output = 
                         "valid": true,
                         "serverId": config.id,
                         "serverName": config.name,
-                        "profiles": config.profiles
+                        "profiles": config.profiles,
+                        "indexes": create_filtered_indexes(&config.indexes)
                     });
                     
                     Ok(HttpResponse::new(200)

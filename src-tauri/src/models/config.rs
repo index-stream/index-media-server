@@ -15,8 +15,6 @@ pub struct MediaIndex {
     #[serde(rename = "mediaType")]
     pub media_type: String,
     pub icon: String,
-    #[serde(rename = "customIconId")]
-    pub custom_icon_id: Option<String>,
     pub folders: Vec<String>,
 }
 

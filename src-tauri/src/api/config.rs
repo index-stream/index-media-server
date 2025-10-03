@@ -111,21 +111,18 @@ pub async fn handle_save_configuration(
     let mut final_indexes = Vec::new();
     
     for incoming_index in incoming_config.indexes {
-        let mut final_index = MediaIndex {
-            id: incoming_index.id.unwrap_or_else(|| Uuid::new_v4().to_string()),
+        let index_id = incoming_index.id.unwrap_or_else(|| Uuid::new_v4().to_string());
+        
+        let final_index = MediaIndex {
+            id: index_id.clone(),
             name: incoming_index.name,
             media_type: incoming_index.media_type,
             icon: incoming_index.icon,
-            custom_icon_id: None,
             folders: incoming_index.folders,
         };
         
         // Handle custom icon files if present
         if let Some(custom_icon_data) = incoming_index.custom_icon_file {
-            // Generate UUID for the icon
-            let icon_id = Uuid::new_v4().to_string();
-            let icon_id_clone = icon_id.clone();
-            
             // Decode base64 data
             let icon_data = general_purpose::STANDARD.decode(custom_icon_data)
                 .map_err(|e| {
@@ -140,19 +137,16 @@ pub async fn handle_save_configuration(
                     warp::reject::custom(ConfigSaveError)
                 })?;
             
-            // Save with correct extension
-            let icon_path = icons_dir.join(format!("{}.{}", icon_id, extension));
+            // Save with correct extension using the index id
+            let icon_path = icons_dir.join(format!("{}.{}", index_id, extension));
             fs::write(&icon_path, icon_data).await
                 .map_err(|e| {
                     eprintln!("Failed to save custom icon: {}", e);
                     warp::reject::custom(ConfigSaveError)
                 })?;
             
-            // Set the icon ID in the final configuration
-            final_index.custom_icon_id = Some(icon_id);
-            
             println!("Saved custom icon for index '{}' with ID '{}' as {} to: {:?}", 
-                     final_index.name, icon_id_clone, extension, icon_path);
+                     final_index.name, index_id, extension, icon_path);
         }
         
         final_indexes.push(final_index);

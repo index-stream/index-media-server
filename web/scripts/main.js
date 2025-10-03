@@ -84,6 +84,7 @@ class Main {
                     serverId: response.serverId,
                     serverName: response.serverName,
                     profiles: response.profiles,
+                    indexes: response.indexes,
                     timestamp: Date.now()
                 }, '*');
             } catch (e) {
