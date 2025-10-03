@@ -78,6 +78,40 @@
             </div>
         </div>
 
+        <!-- Uninitialized Server Page -->
+        <div id="uninitialized-page" class="hidden flex flex-col items-center justify-center min-h-screen p-8">
+            <div class="max-w-md mx-auto text-center">
+                <div class="mb-8">
+                    <div class="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                    </div>
+                    <h1 class="text-3xl font-bold mb-4 bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent">
+                        Server Not Initialized
+                    </h1>
+                    <p class="text-lg text-gray-300 mb-6">
+                        This Index Media Server has not been configured yet. Please set up the server before attempting to connect.
+                    </p>
+                </div>
+
+                <!-- Warning Animation -->
+                <div class="flex justify-center space-x-2 mb-8">
+                    <div class="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
+                    <div class="w-3 h-3 bg-yellow-500 rounded-full animate-pulse" style="animation-delay: 0.2s"></div>
+                    <div class="w-3 h-3 bg-yellow-500 rounded-full animate-pulse" style="animation-delay: 0.4s"></div>
+                </div>
+
+                <!-- Instructions -->
+                <div class="text-gray-400 text-sm space-y-2">
+                    <p>To initialize the server:</p>
+                    <p>1. Open the Index Media Server application</p>
+                    <p>2. Complete the initial setup process</p>
+                    <p>3. Try connecting again</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Success Page -->
         <div id="success-page" class="hidden flex flex-col items-center justify-center min-h-screen p-8">
             <div class="max-w-md mx-auto text-center">

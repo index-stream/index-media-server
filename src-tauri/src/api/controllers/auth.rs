@@ -50,61 +50,70 @@ pub fn handle_login(request: &HttpRequest) -> Pin<Box<dyn Future<Output = Result
         let user_agent = extract_user_agent(&request.headers);
         
         // Parse JSON body
-        let body = request.body.as_ref().ok_or("No body provided")?;
-        let login_data: serde_json::Value = serde_json::from_str(body)?;
+        let body = match request.body.as_ref() {
+            Some(body) => body,
+            None => {
+                let response_body = serde_json::json!({
+                    "success": false,
+                    "message": "No request body provided"
+                });
+                
+                return Ok(HttpResponse::new(400)
+                    .with_cors()
+                    .with_json_body(&response_body.to_string()));
+            }
+        };
+        let login_data: serde_json::Value = match serde_json::from_str(body) {
+            Ok(data) => data,
+            Err(_) => {
+                let response_body = serde_json::json!({
+                    "success": false,
+                    "message": "Invalid JSON in request body"
+                });
+                
+                return Ok(HttpResponse::new(400)
+                    .with_cors()
+                    .with_json_body(&response_body.to_string()));
+            }
+        };
         
         let password = login_data.get("password")
             .and_then(|p| p.as_str())
             .unwrap_or("");
         
-        // Load configuration to check password
-        match load_configuration().await? {
-            Some(config) => {
-                if verify_password(password, &config.password) {
-                    // Generate cryptographically secure auth token
-                    let auth_token = generate_secure_token();
-                    
-                    // Store token with user agent
-                    if let Err(e) = add_token_to_storage(&auth_token, &user_agent) {
-                        eprintln!("Warning: Failed to store token: {}", e);
-                    }
-                    
-                    let response_body = serde_json::json!({
-                        "success": true,
-                        "message": "Login successful",
-                        "token": auth_token,
-                        "serverId": config.id,
-                        "serverName": config.name,
-                        "profiles": config.profiles
-                    });
-                    
-                    Ok(HttpResponse::new(200)
-                        .with_cors()
-                        .with_header("Set-Cookie", &format!("auth_token={}; HttpOnly; Secure; SameSite=Strict", auth_token))
-                        .with_json_body(&response_body.to_string()))
-                } else {
-                    let response_body = serde_json::json!({
-                        "success": false,
-                        "message": "Invalid password"
-                    });
-                    
-                    Ok(HttpResponse::new(401)
-                        .with_cors()
-                        .with_json_body(&response_body.to_string()))
-                }
+        // Load configuration to check password (guaranteed to exist due to router check)
+        let config = load_configuration().await?.ok_or("Configuration not found")?;
+        
+        if verify_password(password, &config.password) {
+            // Generate cryptographically secure auth token
+            let auth_token = generate_secure_token();
+            
+            // Store token with user agent
+            if let Err(e) = add_token_to_storage(&auth_token, &user_agent) {
+                eprintln!("Warning: Failed to store token: {}", e);
             }
-            None => {
-                // No configuration file, server not initialized
-                let response_body = serde_json::json!({
-                    "success": false,
-                    "error": "Server not initialized",
-                    "message": "Please configure the server before attempting to authenticate"
-                });
-                
-                Ok(HttpResponse::new(503)
-                    .with_cors()
-                    .with_json_body(&response_body.to_string()))
-            }
+            
+            let response_body = serde_json::json!({
+                "success": true,
+                "message": "Login successful",
+                "token": auth_token,
+                "serverId": config.id,
+                "serverName": config.name,
+                "profiles": config.profiles
+            });
+            
+            Ok(HttpResponse::new(200)
+                .with_cors()
+                .with_json_body(&response_body.to_string()))
+        } else {
+            let response_body = serde_json::json!({
+                "success": false,
+                "message": "Invalid password"
+            });
+            
+            Ok(HttpResponse::new(401)
+                .with_cors()
+                .with_json_body(&response_body.to_string()))
         }
     })
 }
@@ -142,55 +151,41 @@ pub fn handle_token_check(request: &HttpRequest) -> Pin<Box<dyn Future<Output = 
                 .with_json_body(&response_body.to_string()));
         }
         
-        // Check if server is configured first
-        match load_configuration().await? {
-            Some(config) => {
-                // Server is configured, check token validity
-                match token_exists(token) {
-                    Ok(exists) => {
-                        if exists {
-                            let response_body = serde_json::json!({
-                                "success": true,
-                                "token": token,
-                                "valid": true,
-                                "serverId": config.id,
-                                "serverName": config.name,
-                                "profiles": config.profiles
-                            });
-                            
-                            Ok(HttpResponse::new(200)
-                                .with_cors()
-                                .with_json_body(&response_body.to_string()))
-                        } else {
-                            let response_body = serde_json::json!({
-                                "error": "Token not found"
-                            });
-                            
-                            Ok(HttpResponse::new(404)
-                                .with_cors()
-                                .with_json_body(&response_body.to_string()))
-                        }
-                    }
-                    Err(_) => {
-                        let response_body = serde_json::json!({
-                            "error": "Server error"
-                        });
-                        
-                        Ok(HttpResponse::new(500)
-                            .with_cors()
-                            .with_json_body(&response_body.to_string()))
-                    }
+        // Load configuration (guaranteed to exist due to router check)
+        let config = load_configuration().await?.ok_or("Configuration not found")?;
+        
+        // Check token validity
+        match token_exists(token) {
+            Ok(exists) => {
+                if exists {
+                    let response_body = serde_json::json!({
+                        "success": true,
+                        "token": token,
+                        "valid": true,
+                        "serverId": config.id,
+                        "serverName": config.name,
+                        "profiles": config.profiles
+                    });
+                    
+                    Ok(HttpResponse::new(200)
+                        .with_cors()
+                        .with_json_body(&response_body.to_string()))
+                } else {
+                    let response_body = serde_json::json!({
+                        "error": "Token not found"
+                    });
+                    
+                    Ok(HttpResponse::new(404)
+                        .with_cors()
+                        .with_json_body(&response_body.to_string()))
                 }
             }
-            None => {
-                // No configuration file, server not initialized
+            Err(_) => {
                 let response_body = serde_json::json!({
-                    "success": false,
-                    "error": "Server not initialized",
-                    "message": "Please configure the server before attempting to authenticate"
+                    "error": "Server error"
                 });
                 
-                Ok(HttpResponse::new(503)
+                Ok(HttpResponse::new(500)
                     .with_cors()
                     .with_json_body(&response_body.to_string()))
             }

@@ -27,31 +27,36 @@ class Main {
         try {
             this.updateStatusMessage('Attempting to connect to server...');
 
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            const start = Date.now();
+            let response = await Backend.ping();
+            const serverId = response.serverId;
+            const end = Date.now();
+
+            if(end - start < 1000) {
+                await new Promise(resolve => setTimeout(resolve, 1000 - (end - start)));
+            }
+
             // Check if we have a token in localStorage
-            const token = localStorage.getItem('token');
-            if (token && await Backend.checkToken(token)) {
-                this.handleSuccessfulConnection({ token });
+            const token = localStorage.getItem(serverId);
+            if (token) {
+                response = await Backend.checkToken(token);
+                if(response.success) {
+                    this.handleSuccessfulConnection(response);
+                    return;
+                }
+            }
+        } catch (error) {
+            const errorData = JSON.parse(error.message);
+            console.log('Token not found');
+            if(errorData.status == 503) {
+                console.log('Server is not initialized');
+                this.showPage('uninitialized');
                 return;
             }
-        } catch (error) {
-            console.log('Token not found');
         }
 
-        try {
-            // Try to login without password first
-            const response = await Backend.login();
-            if (response.success) {
-                localStorage.setItem('token', response.token);
-                this.handleSuccessfulConnection(response);
-            } else {
-                throw new Error('Login failed');
-            }
-        } catch (error) {
-            console.log('Password required for login');
-            this.showPage('password');
-            this.setupPasswordForm();
-        }
+        this.showPage('password');
+        this.setupPasswordForm();
     }
 
     isUnauthorizedError(error) {
@@ -67,6 +72,8 @@ class Main {
         // Show success page
         this.showPage('success');
         
+        localStorage.setItem(response.serverId, response.token);
+
         // Communicate back to opener if available
         if (window.opener && !window.opener.closed) {
             try {
@@ -74,6 +81,9 @@ class Main {
                 window.opener.postMessage({
                     type: 'AUTH_SUCCESS',
                     token: response.token,
+                    serverId: response.serverId,
+                    serverName: response.serverName,
+                    profiles: response.profiles,
                     timestamp: Date.now()
                 }, '*');
             } catch (e) {
@@ -91,6 +101,7 @@ class Main {
         // Hide all pages
         document.getElementById('loading-page').classList.add('hidden');
         document.getElementById('password-page').classList.add('hidden');
+        document.getElementById('uninitialized-page').classList.add('hidden');
         document.getElementById('success-page').classList.add('hidden');
 
         // Show the requested page
@@ -139,7 +150,6 @@ class Main {
     }
 
     async handlePasswordSubmission(password) {
-        const passwordInput = document.getElementById('password');
         const submitBtn = document.getElementById('submit-btn');
 
         // Disable button during submission
@@ -153,7 +163,6 @@ class Main {
             const response = await Backend.login(password);
             
             if (response.success) {
-                localStorage.setItem('token', response.token);
                 // Success! Store auth info and show success page
                 this.handleSuccessfulConnection(response);
             } else {

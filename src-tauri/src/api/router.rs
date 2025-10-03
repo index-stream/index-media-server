@@ -3,6 +3,9 @@ use tokio_rustls::server::TlsStream;
 use tokio::net::TcpStream;
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::{Arc, Mutex};
+use std::sync::OnceLock;
+use serde_json;
 
 /// HTTP request information
 #[derive(Debug, Clone)]
@@ -59,6 +62,7 @@ impl HttpResponse {
             401 => "HTTP/1.1 401 Unauthorized",
             404 => "HTTP/1.1 404 Not Found",
             500 => "HTTP/1.1 500 Internal Server Error",
+            503 => "HTTP/1.1 503 Service Unavailable",
             _ => "HTTP/1.1 200 OK",
         };
 
@@ -145,6 +149,34 @@ pub fn extract_user_agent(headers: &[String]) -> String {
         .unwrap_or_else(|| "Unknown".to_string())
 }
 
+// Cache for server initialization status to avoid repeated file reads
+static SERVER_INIT_CACHE: OnceLock<Arc<Mutex<Option<bool>>>> = OnceLock::new();
+
+/// Check if server configuration exists (with caching)
+async fn check_server_initialized() -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    let cache = SERVER_INIT_CACHE.get_or_init(|| Arc::new(Mutex::new(None)));
+    
+    // Check if we already have a cached value (only cache true values)
+    {
+        let cached_status = cache.lock().unwrap();
+        if let Some(true) = *cached_status {
+            return Ok(true);
+        }
+    }
+    
+    // Check file system
+    let config_path = std::env::current_dir()?.join("data").join("config.json");
+    let exists = config_path.exists();
+    
+    // Only cache if the server is initialized (true), never cache false
+    if exists {
+        let mut cached_status = cache.lock().unwrap();
+        *cached_status = Some(true);
+    }
+    
+    Ok(exists)
+}
+
 /// Route handler function type
 pub type RouteHandler = fn(&HttpRequest) -> Pin<Box<dyn Future<Output = Result<HttpResponse, Box<dyn std::error::Error + Send + Sync>>> + Send + 'static>>;
 
@@ -178,9 +210,36 @@ impl Router {
     }
 
     pub async fn handle_request(&self, request: &HttpRequest) -> Result<HttpResponse, Box<dyn std::error::Error + Send + Sync>> {
+        // Check if server is initialized before processing any request
+        if !check_server_initialized().await? {
+            let response_body = serde_json::json!({
+                "success": false,
+                "error": "Server not initialized",
+                "message": "Please configure the server before attempting to connect"
+            });
+            
+            return Ok(HttpResponse::new(503)
+                .with_cors()
+                .with_json_body(&response_body.to_string()));
+        }
+        
         for route in &self.routes {
             if route.method == request.method && self.matches_path(&route.path_pattern, &request.path) {
-                return (route.handler)(request).await;
+                return match (route.handler)(request).await {
+                    Ok(response) => Ok(response),
+                    Err(e) => {
+                        eprintln!("Handler error: {}", e);
+                        let response_body = serde_json::json!({
+                            "success": false,
+                            "error": "Internal server error",
+                            "message": "An unexpected error occurred"
+                        });
+                        
+                        Ok(HttpResponse::new(500)
+                            .with_cors()
+                            .with_json_body(&response_body.to_string()))
+                    }
+                };
             }
         }
         
@@ -205,19 +264,73 @@ impl Router {
     }
 }
 
+/// Read a complete HTTP request from the TLS stream
+async fn read_complete_http_request(
+    tls_stream: &mut TlsStream<TcpStream>,
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let mut buffer = Vec::new();
+    let mut temp_buffer = [0; 1024];
+    
+    loop {
+        let n = tls_stream.read(&mut temp_buffer).await?;
+        if n == 0 {
+            break;
+        }
+        
+        buffer.extend_from_slice(&temp_buffer[..n]);
+        
+        // Check if we have a complete HTTP request
+        let request_str = String::from_utf8_lossy(&buffer);
+        
+        // Look for the end of headers (double CRLF)
+        if let Some(header_end) = request_str.find("\r\n\r\n") {
+            let headers = &request_str[..header_end + 4];
+            
+            // Check if there's a Content-Length header
+            if let Some(content_length_start) = headers.find("Content-Length:") {
+                if let Some(content_length_end) = headers[content_length_start..].find("\r\n") {
+                    let content_length_str = &headers[content_length_start + 15..content_length_start + content_length_end];
+                    if let Ok(content_length) = content_length_str.trim().parse::<usize>() {
+                        let body_start = header_end + 4;
+                        let expected_total = body_start + content_length;
+                        
+                        if buffer.len() >= expected_total {
+                            // We have the complete request
+                            return Ok(String::from_utf8_lossy(&buffer[..expected_total]).to_string());
+                        }
+                        // Continue reading to get the complete body
+                    }
+                }
+            } else {
+                // No Content-Length header, assume request is complete after headers
+                return Ok(request_str.to_string());
+            }
+        }
+        
+        // Prevent infinite loops with very large requests
+        if buffer.len() > 1024 * 1024 * 100 { // 100MB limit
+            return Err("Request too large".into());
+        }
+    }
+    
+    if buffer.is_empty() {
+        Err("Empty request".into())
+    } else {
+        Ok(String::from_utf8_lossy(&buffer).to_string())
+    }
+}
+
 /// Handle a single HTTPS connection using the router
 pub async fn handle_connection_with_router(
     mut tls_stream: TlsStream<TcpStream>,
     router: &Router,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let mut buffer = [0; 2048];
-    let n = tls_stream.read(&mut buffer).await?;
     
-    if n == 0 {
-        return Ok(());
-    }
-    
-    let request_str = String::from_utf8_lossy(&buffer[..n]);
+    // Read the complete HTTP request
+    let request_str = match read_complete_http_request(&mut tls_stream).await {
+        Ok(req) => req,
+        Err(_e) => return Ok(()),
+    };
     
     // Parse HTTP request
     let request = match parse_http_request(&request_str) {

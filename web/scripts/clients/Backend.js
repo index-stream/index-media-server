@@ -3,7 +3,7 @@ import { API_URL } from '../constants/constants.js';
 class Backend {
     constructor() {}
 
-    async login(password = null) {
+    async login(password) {
         return this._post('/login', { password });
     }
 
