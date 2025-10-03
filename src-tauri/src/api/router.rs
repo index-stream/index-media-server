@@ -21,6 +21,7 @@ pub struct HttpResponse {
     status_code: u16,
     headers: Vec<(String, String)>,
     body: Option<String>,
+    binary_body: Option<Vec<u8>>,
 }
 
 impl HttpResponse {
@@ -29,6 +30,7 @@ impl HttpResponse {
             status_code,
             headers: Vec::new(),
             body: None,
+            binary_body: None,
         }
     }
 
@@ -45,6 +47,11 @@ impl HttpResponse {
     pub fn with_json_body(mut self, body: &str) -> Self {
         self.headers.push(("Content-Type".to_string(), "application/json".to_string()));
         self.body = Some(body.to_string());
+        self
+    }
+
+    pub fn with_binary_body(mut self, body: Vec<u8>) -> Self {
+        self.binary_body = Some(body);
         self
     }
 
@@ -74,7 +81,7 @@ impl HttpResponse {
         }
         
         // Add content length
-        let body_len = self.body.as_ref().map_or(0, |b| b.len());
+        let body_len = self.body.as_ref().map_or(0, |b| b.len()) + self.binary_body.as_ref().map_or(0, |b| b.len());
         response.push_str(&format!("Content-Length: {}\r\n", body_len));
         response.push_str("\r\n");
         
@@ -84,6 +91,11 @@ impl HttpResponse {
         // Send body if present
         if let Some(body) = self.body {
             stream.write_all(body.as_bytes()).await?;
+        }
+        
+        // Send binary body if present
+        if let Some(binary_body) = self.binary_body {
+            stream.write_all(&binary_body).await?;
         }
         
         stream.flush().await?;
@@ -260,7 +272,35 @@ impl Router {
             return path.starts_with(prefix);
         }
         
+        // Handle path parameter patterns like /api/index/{index_id}/icon
+        if pattern.contains("{") && pattern.contains("}") {
+            return self.matches_path_with_params(pattern, path);
+        }
+        
         false
+    }
+    
+    fn matches_path_with_params(&self, pattern: &str, path: &str) -> bool {
+        let pattern_parts: Vec<&str> = pattern.split('/').collect();
+        let path_parts: Vec<&str> = path.split('/').collect();
+        
+        if pattern_parts.len() != path_parts.len() {
+            return false;
+        }
+        
+        for (pattern_part, path_part) in pattern_parts.iter().zip(path_parts.iter()) {
+            if pattern_part.starts_with('{') && pattern_part.ends_with('}') {
+                // This is a parameter, any non-empty value matches
+                if path_part.is_empty() {
+                    return false;
+                }
+            } else if pattern_part != path_part {
+                // Exact match required for non-parameter parts
+                return false;
+            }
+        }
+        
+        true
     }
 }
 

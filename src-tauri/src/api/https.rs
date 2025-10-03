@@ -13,7 +13,7 @@ use chrono::{DateTime, Utc};
 use crate::constants::DEFAULT_HTTPS_PORT;
 use crate::utils::network::find_available_port;
 use super::router::{Router, handle_connection_with_router};
-use super::controllers::{handle_login, handle_token_check, handle_ping, handle_static_files};
+use super::controllers::{handle_login, handle_token_check, handle_ping, handle_static_files, handle_index_icon};
 
 /// Certificate storage paths
 const CERT_FILE: &str = "https_cert.pem";
@@ -279,6 +279,7 @@ pub async fn start_https_server(app_state: crate::api::state::ExtendedAppState) 
     router.add_route("POST", "/api/login", handle_login);
     router.add_route("GET", "/api/token*", handle_token_check);
     router.add_route("GET", "/api/ping", handle_ping);
+    router.add_route("GET", "/api/index/{index_id}/icon", handle_index_icon);
     router.add_route("GET", "*", handle_static_files);
     
     // Accept connections and handle them
