@@ -43,6 +43,12 @@ export default class SetupPage extends Page {
         const backToProfilesBtn = document.getElementById('back-to-profiles-btn');
         backToProfilesBtn?.addEventListener('click', () => this.backToProfileStep());
 
+        // Password field validation
+        const serverPasswordInput = document.getElementById('server-password');
+        const confirmPasswordInput = document.getElementById('confirm-password');
+        serverPasswordInput?.addEventListener('input', () => this.validatePasswordFields());
+        confirmPasswordInput?.addEventListener('input', () => this.validatePasswordFields());
+
         // Step 4: Name form
         const nameForm = document.getElementById('name-form');
         nameForm?.addEventListener('submit', (e) => this.handleNameSubmit(e));
@@ -350,20 +356,54 @@ export default class SetupPage extends Page {
             errorElement.classList.add('hidden');
         }
         
-        // Validate passwords match if password is provided
-        if (password && password !== confirmPassword) {
-            // Show error message
-            if (errorElement) {
-                errorElement.classList.remove('hidden');
-            }
+        // Validate password is provided
+        if (!password || password.trim() === '') {
+            this.showPasswordError('Password is required');
+            return;
+        }
+        
+        // Validate passwords match
+        if (password !== confirmPassword) {
+            this.showPasswordError('Passwords do not match. Please try again.');
             return;
         }
         
         // Store the password
-        this.serverPassword = password || '';
+        this.serverPassword = password;
         
         console.log('Password set:', this.serverPassword ? 'Yes' : 'No');
         this.showStep4();
+    }
+
+    showPasswordError(message) {
+        const errorElement = document.getElementById('password-error');
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.classList.remove('hidden');
+        }
+    }
+
+    validatePasswordFields() {
+        const serverPasswordInput = document.getElementById('server-password');
+        const confirmPasswordInput = document.getElementById('confirm-password');
+        const continueBtn = document.getElementById('continue-to-index-name-btn');
+        
+        if (!serverPasswordInput || !confirmPasswordInput || !continueBtn) return;
+        
+        const password = serverPasswordInput.value.trim();
+        const confirmPassword = confirmPasswordInput.value.trim();
+        
+        // Enable button only if both fields have content
+        const hasContent = password.length > 0 && confirmPassword.length > 0;
+        continueBtn.disabled = !hasContent;
+        
+        // Hide error message when both fields have content
+        if (hasContent) {
+            const errorElement = document.getElementById('password-error');
+            if (errorElement) {
+                errorElement.classList.add('hidden');
+            }
+        }
     }
 
     backToPasswordStep() {
@@ -394,8 +434,8 @@ export default class SetupPage extends Page {
             step2.classList.add('hidden');
             step3.classList.remove('hidden');
             
-            // Initialize media type selection (default to videos)
-            this.initializeMediaTypeSelection();
+            // Initialize password field validation
+            this.validatePasswordFields();
         }
     }
 
@@ -628,25 +668,6 @@ export default class SetupPage extends Page {
     onContinueToFolders() {
         console.log('Continue to folders clicked - processing setup...');
         this.showStep6();
-    }
-
-    showStep3() {
-        const step2 = document.getElementById('setup-step-2');
-        const step3 = document.getElementById('setup-step-3');
-        
-        if (step2 && step3) {
-            step2.classList.add('hidden');
-            step3.classList.remove('hidden');
-            
-            // Update the display name in step 3
-            const nameDisplay = document.getElementById('index-name-display-step3');
-            if (nameDisplay) {
-                nameDisplay.textContent = this.indexName;
-            }
-            
-            // Update folders list
-            this.updateFoldersList();
-        }
     }
 
     backToIconStep() {
@@ -912,6 +933,12 @@ export default class SetupPage extends Page {
         const nameInput = document.getElementById('index-name');
         if (nameInput) nameInput.value = 'Home';
 
+        const serverPasswordInput = document.getElementById('server-password');
+        if (serverPasswordInput) serverPasswordInput.value = '';
+
+        const confirmPasswordInput = document.getElementById('confirm-password');
+        if (confirmPasswordInput) confirmPasswordInput.value = '';
+
         const customIconInput = document.getElementById('custom-icon');
         if (customIconInput) customIconInput.value = '';
 
@@ -922,6 +949,7 @@ export default class SetupPage extends Page {
         this.mediaType = 'videos';
         this.selectedIcon = 'home';
         this.selectedFolders = [];
+        this.serverPassword = '';
 
         // Reset profile UI
         this.updateProfilesList();
