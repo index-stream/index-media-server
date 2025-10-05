@@ -21,6 +21,14 @@ class Backend {
         return this._get('/connect-code');
     }
 
+    async updateServerName(name) {
+        return this._put('/server/name', { name });
+    }
+
+    async updateServerPassword(password) {
+        return this._put('/server/password', { password });
+    }
+
     async _handleError(response) {
         let errorData = {
             status: response.status,
@@ -96,6 +104,22 @@ class Backend {
 
         const response = await fetch(apiUrl + path, {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(request),
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            await this._handleError(response);
+        }
+        return await response.json();
+    }
+
+    async _put(path, request, apiUrl = API_URL) {
+        const response = await fetch(apiUrl + path, {
+            method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
             },

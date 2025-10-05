@@ -2,6 +2,7 @@ import Page from './Page.js';
 import { PAGES } from '../constants.js';
 import PageController from '../controllers/PageController.js';
 import Backend from '../clients/Backend.js';
+import Config from '../models/Config.js';
 
 export default class SetupPage extends Page {
     constructor() {
@@ -868,6 +869,10 @@ export default class SetupPage extends Page {
             
             if (result.success) {
                 console.log('Configuration saved successfully!');
+                
+                // Set the config in our model
+                Config.setConfig(result.config);
+                
                 console.log('Setup completed! Navigating to home page...');
                 
                 // Navigate to home page

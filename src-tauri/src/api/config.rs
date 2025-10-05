@@ -1,4 +1,4 @@
-use crate::models::config::{Configuration, IncomingConfiguration, MediaIndex};
+use crate::models::config::{Configuration, IncomingConfiguration, MediaIndex, ServerPasswordUpdate, ServerNameUpdate, ConfigurationResponse};
 use crate::utils::image::detect_image_extension;
 use crate::api::state::AppState;
 use base64::{Engine as _, engine::general_purpose};
@@ -41,12 +41,15 @@ pub async fn handle_get_configuration(_app_state: AppState) -> Result<impl warp:
         Ok(config_json) => {
             // Parse the JSON to validate it's valid
             match serde_json::from_str::<Configuration>(&config_json) {
-                Ok(config) => Ok(warp::reply::with_status(
-                    warp::reply::json(&serde_json::json!({
-                        "config": config
-                    })),
-                    warp::http::StatusCode::OK,
-                )),
+                Ok(config) => {
+                    let config_response = ConfigurationResponse::from(config);
+                    Ok(warp::reply::with_status(
+                        warp::reply::json(&serde_json::json!({
+                            "config": config_response
+                        })),
+                        warp::http::StatusCode::OK,
+                    ))
+                },
                 Err(e) => {
                     eprintln!("Failed to parse configuration JSON: {}", e);
                     Ok(warp::reply::with_status(
@@ -185,10 +188,153 @@ pub async fn handle_save_configuration(
     
     println!("Configuration saved successfully to: {:?}", config_path);
     
-    Ok(warp::reply::json(&serde_json::json!({
-        "success": true,
-        "message": "Configuration saved successfully"
-    })))
+    // Convert to response format (excluding password)
+    let config_response = ConfigurationResponse::from(final_config);
+    
+    Ok(warp::reply::with_status(
+        warp::reply::json(&serde_json::json!({
+            "success": true,
+            "message": "Configuration saved successfully",
+            "config": config_response
+        })),
+        warp::http::StatusCode::OK,
+    ))
+}
+
+// Handler for updating server password
+pub async fn handle_update_server_password(
+    _app_state: AppState,
+    password_update: ServerPasswordUpdate,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    // Validate password is not empty
+    if password_update.password.trim().is_empty() {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": false,
+                "error": "Password is required and cannot be empty"
+            })),
+            warp::http::StatusCode::BAD_REQUEST,
+        ));
+    }
+
+    // Get the data directory path
+    let data_dir = env::current_dir()
+        .map_err(|e| {
+            eprintln!("Failed to get current directory: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?
+        .join("data");
+    
+    let config_path = data_dir.join("config.json");
+    
+    // Read existing configuration
+    let config_json = fs::read_to_string(&config_path).await
+        .map_err(|e| {
+            eprintln!("Failed to read configuration file: {}", e);
+            warp::reject::custom(ConfigGetError)
+        })?;
+    
+    let mut config: Configuration = serde_json::from_str(&config_json)
+        .map_err(|e| {
+            eprintln!("Failed to parse configuration JSON: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    // Update password
+    config.password = hash_password(&password_update.password)
+        .map_err(|e| {
+            eprintln!("Failed to hash password: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    // Save updated configuration
+    let updated_config_json = serde_json::to_string_pretty(&config)
+        .map_err(|e| {
+            eprintln!("Failed to serialize configuration: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    fs::write(&config_path, updated_config_json).await
+        .map_err(|e| {
+            eprintln!("Failed to save configuration: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    println!("Server password updated successfully");
+    
+    Ok(warp::reply::with_status(
+        warp::reply::json(&serde_json::json!({
+            "success": true,
+            "message": "Server password updated successfully"
+        })),
+        warp::http::StatusCode::OK,
+    ))
+}
+
+// Handler for updating server name
+pub async fn handle_update_server_name(
+    _app_state: AppState,
+    name_update: ServerNameUpdate,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    // Validate name is not empty
+    if name_update.name.trim().is_empty() {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": false,
+                "error": "Server name is required and cannot be empty"
+            })),
+            warp::http::StatusCode::BAD_REQUEST,
+        ));
+    }
+
+    // Get the data directory path
+    let data_dir = env::current_dir()
+        .map_err(|e| {
+            eprintln!("Failed to get current directory: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?
+        .join("data");
+    
+    let config_path = data_dir.join("config.json");
+    
+    // Read existing configuration
+    let config_json = fs::read_to_string(&config_path).await
+        .map_err(|e| {
+            eprintln!("Failed to read configuration file: {}", e);
+            warp::reject::custom(ConfigGetError)
+        })?;
+    
+    let mut config: Configuration = serde_json::from_str(&config_json)
+        .map_err(|e| {
+            eprintln!("Failed to parse configuration JSON: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    // Update name
+    config.name = name_update.name.trim().to_string();
+    
+    // Save updated configuration
+    let updated_config_json = serde_json::to_string_pretty(&config)
+        .map_err(|e| {
+            eprintln!("Failed to serialize configuration: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    fs::write(&config_path, updated_config_json).await
+        .map_err(|e| {
+            eprintln!("Failed to save configuration: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    println!("Server name updated successfully to: {}", config.name);
+    
+    Ok(warp::reply::with_status(
+        warp::reply::json(&serde_json::json!({
+            "success": true,
+            "message": "Server name updated successfully"
+        })),
+        warp::http::StatusCode::OK,
+    ))
 }
 
 // Custom error types

@@ -27,6 +27,26 @@ pub struct Configuration {
     pub indexes: Vec<MediaIndex>,
 }
 
+// Configuration response structure that excludes the password field
+#[derive(Debug, Serialize)]
+pub struct ConfigurationResponse {
+    pub id: String,
+    pub name: String,
+    pub profiles: Vec<Profile>,
+    pub indexes: Vec<MediaIndex>,
+}
+
+impl From<Configuration> for ConfigurationResponse {
+    fn from(config: Configuration) -> Self {
+        Self {
+            id: config.id,
+            name: config.name,
+            profiles: config.profiles,
+            indexes: config.indexes,
+        }
+    }
+}
+
 // Temporary struct for handling incoming configuration with base64 custom icon data
 #[derive(Debug, Deserialize)]
 pub struct IncomingProfile {
@@ -53,4 +73,15 @@ pub struct IncomingConfiguration {
     pub profiles: Vec<IncomingProfile>,
     pub password: String,
     pub indexes: Vec<IncomingMediaIndex>,
+}
+
+// Request structures for individual server updates
+#[derive(Debug, Deserialize)]
+pub struct ServerPasswordUpdate {
+    pub password: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ServerNameUpdate {
+    pub name: String,
 }

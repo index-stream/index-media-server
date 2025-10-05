@@ -3,6 +3,7 @@ import { PAGES } from './constants.js';
 import InitialPage from './pages/InitialPage.js';
 import SetupPage from './pages/SetupPage.js';
 import HomePage from './pages/HomePage.js';
+import ServerSettingsPage from './pages/ServerSettingsPage.js';
 
 class Main {
     constructor() {
@@ -20,6 +21,7 @@ class Main {
         PageController.register(new InitialPage(), PAGES.INITIAL);
         PageController.register(new SetupPage(), PAGES.SETUP);
         PageController.register(new HomePage(), PAGES.HOME);
+        PageController.register(new ServerSettingsPage(), PAGES.SERVER_SETTINGS);
     }
 }
 

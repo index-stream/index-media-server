@@ -1,5 +1,5 @@
 import Page from './Page.js';
-import { PAGES } from '../constants.js';
+import { PAGES, STREAMING_URL } from '../constants.js';
 import Backend from '../clients/Backend.js';
 
 export default class HomePage extends Page {
@@ -17,9 +17,9 @@ export default class HomePage extends Page {
         const manageIndexesBtn = document.getElementById('manage-indexes-btn');
         manageIndexesBtn?.addEventListener('click', () => this.onManageIndexesClick());
 
-        // Manage password button
-        const managePasswordBtn = document.getElementById('manage-password-btn');
-        managePasswordBtn?.addEventListener('click', () => this.onManagePasswordClick());
+        // Server settings button
+        const serverSettingsBtn = document.getElementById('server-settings-btn');
+        serverSettingsBtn?.addEventListener('click', () => this.onServerSettingsClick());
 
         // Manage profiles button
         const manageProfilesBtn = document.getElementById('manage-profiles-btn');
@@ -28,7 +28,7 @@ export default class HomePage extends Page {
 
     onStartStreamingLinkClick() {
         console.log('Start streaming link clicked - TODO: Implement streaming functionality');
-        // TODO: Implement actual streaming start logic
+        window.location.href = STREAMING_URL + '/app?connectCode=' + this._connectCode;
     }
 
     onManageIndexesClick() {
@@ -36,9 +36,11 @@ export default class HomePage extends Page {
         // TODO: Navigate to index management page or show modal
     }
 
-    onManagePasswordClick() {
-        console.log('Manage password clicked - TODO: Implement password management');
-        // TODO: Show password management modal or navigate to password setup
+    onServerSettingsClick() {
+        console.log('Server settings clicked');
+        document.dispatchEvent(new CustomEvent('navigate', {
+            detail: { page: PAGES.SERVER_SETTINGS }
+        }));
     }
 
     onManageProfilesClick() {
@@ -56,7 +58,8 @@ export default class HomePage extends Page {
 
     // Method to show/hide the home page
     async onShow() {
-        const connectCode = await Backend.getConnectCode();
-        this.updateConnectCode(connectCode.connectCode);
+        const response = await Backend.getConnectCode();
+        this._connectCode = response.connectCode;
+        this.updateConnectCode(this._connectCode);
     }
 }

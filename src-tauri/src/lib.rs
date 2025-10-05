@@ -7,11 +7,12 @@ pub mod constants;
 
 // Re-export commonly used types and functions
 pub use api::folders::{handle_select_folders, select_folders};
-pub use api::config::{handle_save_configuration, handle_get_configuration};
+pub use api::config::{handle_save_configuration, handle_get_configuration, handle_update_server_password, handle_update_server_name};
 pub use api::handlers::{handle_static_file, handle_ping, handle_connect_code};
+pub use api::http::start_http_server;
 pub use api::https::start_https_server;
 pub use api::state::{AppState, ExtendedAppState, ServerState};
-pub use models::config::{Configuration, IncomingConfiguration};
+pub use models::config::{Configuration, IncomingConfiguration, ServerPasswordUpdate, ServerNameUpdate, ConfigurationResponse};
 pub use constants::{DEFAULT_HTTPS_PORT, DEFAULT_HTTP_PORT};
 pub use utils::network::find_available_port;
 

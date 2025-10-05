@@ -1,6 +1,7 @@
 pub mod config;
 pub mod folders;
 pub mod handlers;
+pub mod http;
 pub mod https;
 pub mod state;
 pub mod router;
@@ -9,6 +10,7 @@ pub mod controllers;
 pub use config::*;
 pub use folders::*;
 pub use handlers::*;
+pub use http::*;
 pub use https::*;
 pub use state::*;
 pub use router::*;

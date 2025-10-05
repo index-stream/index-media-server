@@ -2,6 +2,7 @@ import Page from './Page.js';
 import { PAGES } from '../constants.js';
 import PageController from '../controllers/PageController.js';
 import Backend from '../clients/Backend.js';
+import Config from '../models/Config.js';
 
 export default class InitialPage extends Page {
     constructor() {
@@ -24,6 +25,8 @@ export default class InitialPage extends Page {
         try {
             const response = await Backend.getConfiguration();
             console.log('Configuration:', response.config);
+            Config.setConfig(response.config);
+            
             return !!response.config;
         } catch (error) {
             return false;

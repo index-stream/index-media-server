@@ -6,4 +6,4 @@ const urlParams = new URLSearchParams(window.location.search);
 const dev = urlParams.get('dev');
 export const REDIRECT_URL = (!dev)
     ? 'https://indexstream.org'
-    : ((dev == 'local') ? 'https://localhost:8000' : 'https://dev.indexstream.org');
+    : ((dev == 'local') ? 'http://localhost:8000' : 'https://dev.indexstream.org');
