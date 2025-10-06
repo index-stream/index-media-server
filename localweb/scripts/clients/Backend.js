@@ -57,6 +57,11 @@ class Backend {
         let errorData = {
             status: response.status,
         }
+        if(response.status === 401) {
+            // Redirect to unauthorized page
+            window.location.href = './unauthorized.html';
+            return;
+        }
         try {
             const errorBody = await response.json();
             if (errorBody) {
