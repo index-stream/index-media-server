@@ -37,15 +37,15 @@ export default class HomePage extends Page {
     }
 
     onServerSettingsClick() {
-        console.log('Server settings clicked');
         document.dispatchEvent(new CustomEvent('navigate', {
             detail: { page: PAGES.SERVER_SETTINGS }
         }));
     }
 
     onManageProfilesClick() {
-        console.log('Manage profiles clicked - TODO: Implement profile management');
-        // TODO: Navigate to profile management page or show modal
+        document.dispatchEvent(new CustomEvent('navigate', {
+            detail: { page: PAGES.MANAGE_PROFILES }
+        }));
     }
 
     // Method to update the connect code display

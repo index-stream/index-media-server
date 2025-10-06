@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 // Configuration data structures
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Profile {
     pub id: String,
     pub name: String,

@@ -3,6 +3,7 @@ export const PAGES = {
     SETUP: 'setup',
     HOME: 'home',
     SERVER_SETTINGS: 'server-settings',
+    MANAGE_PROFILES: 'manage-profiles',
     // Add other page constants as needed
 };
 

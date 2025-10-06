@@ -40,6 +40,39 @@ class Config {
         return this._config?.profiles || [];
     }
 
+    // Add a new profile (local update)
+    addProfile(profile) {
+        if (this._config) {
+            if (!this._config.profiles) {
+                this._config.profiles = [];
+            }
+            this._config.profiles.push(profile);
+            console.log('Profile added locally:', profile);
+        }
+    }
+
+    // Update an existing profile (local update)
+    updateProfile(updatedProfile) {
+        if (this._config && this._config.profiles) {
+            const index = this._config.profiles.findIndex(p => p.id === updatedProfile.id);
+            if (index !== -1) {
+                this._config.profiles[index] = updatedProfile;
+                console.log('Profile updated locally:', updatedProfile);
+            }
+        }
+    }
+
+    // Remove a profile (local update)
+    removeProfile(profileId) {
+        if (this._config && this._config.profiles) {
+            const index = this._config.profiles.findIndex(p => p.id === profileId);
+            if (index !== -1) {
+                const removedProfile = this._config.profiles.splice(index, 1)[0];
+                console.log('Profile removed locally:', removedProfile);
+            }
+        }
+    }
+
     // Get indexes
     getIndexes() {
         return this._config?.indexes || [];

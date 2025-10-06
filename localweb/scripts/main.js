@@ -4,6 +4,7 @@ import InitialPage from './pages/InitialPage.js';
 import SetupPage from './pages/SetupPage.js';
 import HomePage from './pages/HomePage.js';
 import ServerSettingsPage from './pages/ServerSettingsPage.js';
+import ManageProfilesPage from './pages/ManageProfilesPage.js';
 
 class Main {
     constructor() {
@@ -22,6 +23,7 @@ class Main {
         PageController.register(new SetupPage(), PAGES.SETUP);
         PageController.register(new HomePage(), PAGES.HOME);
         PageController.register(new ServerSettingsPage(), PAGES.SERVER_SETTINGS);
+        PageController.register(new ManageProfilesPage(), PAGES.MANAGE_PROFILES);
     }
 }
 

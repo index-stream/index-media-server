@@ -2,9 +2,9 @@ use warp::Filter;
 use crate::api::state::{AppState, ExtendedAppState};
 use crate::models::config::IncomingConfiguration;
 use crate::api::folders::handle_select_folders;
-use crate::api::config::{handle_get_configuration, handle_save_configuration, handle_update_server_password, handle_update_server_name};
+use crate::api::config::{handle_get_configuration, handle_save_configuration, handle_update_server_password, handle_update_server_name, handle_create_profile, handle_update_profile, handle_delete_profile};
 use crate::api::handlers::{handle_ping, handle_connect_code, handle_static_file};
-use crate::models::config::{ServerPasswordUpdate, ServerNameUpdate};
+use crate::models::config::{ServerPasswordUpdate, ServerNameUpdate, IncomingProfile};
 
 /// Start the HTTP server for browser communication and static file serving
 pub async fn start_http_server(
@@ -19,6 +19,9 @@ pub async fn start_http_server(
     let app_state_save_config = app_state.clone();
     let app_state_update_password = app_state.clone();
     let app_state_update_name = app_state.clone();
+    let app_state_create_profile = app_state.clone();
+    let app_state_update_profile = app_state.clone();
+    let app_state_delete_profile = app_state.clone();
     let extended_state_connect = extended_state.clone();
 
     // Token validation filter for API endpoints
@@ -93,6 +96,31 @@ pub async fn start_http_server(
         .and(warp::any().map(move || app_state_update_name.clone()))
         .and_then(|_, name_update: ServerNameUpdate, app_state: AppState| handle_update_server_name(app_state, name_update));
 
+    let create_profile = warp::path("api")
+        .and(warp::path("profile"))
+        .and(warp::post())
+        .and(token_validation.clone())
+        .and(warp::body::json())
+        .and(warp::any().map(move || app_state_create_profile.clone()))
+        .and_then(|_, profile_request: IncomingProfile, app_state: AppState| handle_create_profile(app_state, profile_request));
+
+    let update_profile = warp::path("api")
+        .and(warp::path("profile"))
+        .and(warp::path::param::<String>())
+        .and(warp::put())
+        .and(token_validation.clone())
+        .and(warp::body::json())
+        .and(warp::any().map(move || app_state_update_profile.clone()))
+        .and_then(|profile_id: String, _, profile_request: IncomingProfile, app_state: AppState| handle_update_profile(app_state, profile_id, profile_request));
+
+    let delete_profile = warp::path("api")
+        .and(warp::path("profile"))
+        .and(warp::path::param::<String>())
+        .and(warp::delete())
+        .and(token_validation.clone())
+        .and(warp::any().map(move || app_state_delete_profile.clone()))
+        .and_then(|profile_id: String, _, app_state: AppState| handle_delete_profile(app_state, profile_id));
+
     // Static file serving with SPA fallback (only for non-API paths)
     let static_files = warp::path::full()
         .and_then(|path: warp::path::FullPath| async move {
@@ -112,6 +140,9 @@ pub async fn start_http_server(
         .or(connect_code)
         .or(update_password)
         .or(update_name)
+        .or(create_profile)
+        .or(update_profile)
+        .or(delete_profile)
         .or(static_files)
         .recover(move |rejection: warp::Rejection| async move {
             if rejection.find::<TokenValidationError>().is_some() {

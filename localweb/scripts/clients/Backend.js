@@ -5,6 +5,14 @@ class Backend {
         this._token = new URLSearchParams(window.location.search).get('token');
     }
 
+    async createProfile(profile) {
+        return this._postAuthenticated('/profile', profile);
+    }
+
+    async deleteProfile(profileId) {
+        return this._deleteAuthenticated('/profile/' + profileId);
+    }
+
     async getFolders() {
         return this._postAuthenticated('/select-folders');
     }
@@ -19,6 +27,10 @@ class Backend {
 
     async getConnectCode() {
         return this._getAuthenticated('/connect-code');
+    }
+
+    async updateProfile(profile) {
+        return this._putAuthenticated('/profile/' + profile.id, profile);
     }
 
     async updateServerName(name) {

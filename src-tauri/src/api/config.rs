@@ -1,4 +1,4 @@
-use crate::models::config::{Configuration, IncomingConfiguration, MediaIndex, ServerPasswordUpdate, ServerNameUpdate, ConfigurationResponse};
+use crate::models::config::{Configuration, IncomingConfiguration, MediaIndex, ServerPasswordUpdate, ServerNameUpdate, ConfigurationResponse, IncomingProfile};
 use crate::utils::image::detect_image_extension;
 use crate::api::state::AppState;
 use base64::{Engine as _, engine::general_purpose};
@@ -346,6 +346,251 @@ pub struct ConfigNotFoundError;
 
 #[derive(Debug)]
 pub struct ConfigSaveError;
+
+// Handler for creating a new profile
+pub async fn handle_create_profile(
+    _app_state: AppState,
+    profile_request: IncomingProfile,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    // Validate input
+    if profile_request.name.trim().is_empty() {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": false,
+                "error": "Profile name is required and cannot be empty"
+            })),
+            warp::http::StatusCode::BAD_REQUEST,
+        ));
+    }
+
+    if profile_request.color.trim().is_empty() {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": false,
+                "error": "Profile color is required and cannot be empty"
+            })),
+            warp::http::StatusCode::BAD_REQUEST,
+        ));
+    }
+
+    // Get the data directory path
+    let data_dir = env::current_dir()
+        .map_err(|e| {
+            eprintln!("Failed to get current directory: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?
+        .join("data");
+    
+    let config_path = data_dir.join("config.json");
+    
+    // Read existing configuration
+    let config_json = fs::read_to_string(&config_path).await
+        .map_err(|e| {
+            eprintln!("Failed to read configuration file: {}", e);
+            warp::reject::custom(ConfigGetError)
+        })?;
+    
+    let mut config: Configuration = serde_json::from_str(&config_json)
+        .map_err(|e| {
+            eprintln!("Failed to parse configuration JSON: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    // Create new profile with generated ID
+    let new_profile = crate::models::config::Profile {
+        id: Uuid::new_v4().to_string(),
+        name: profile_request.name.trim().to_string(),
+        color: profile_request.color.trim().to_string(),
+    };
+    
+    // Add profile to configuration
+    config.profiles.push(new_profile.clone());
+    
+    // Save updated configuration
+    let updated_config_json = serde_json::to_string_pretty(&config)
+        .map_err(|e| {
+            eprintln!("Failed to serialize configuration: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    fs::write(&config_path, updated_config_json).await
+        .map_err(|e| {
+            eprintln!("Failed to save configuration: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    println!("Profile '{}' created successfully with ID: {}", new_profile.name, new_profile.id);
+    
+    Ok(warp::reply::with_status(
+        warp::reply::json(&serde_json::json!({
+            "success": true,
+            "message": "Profile created successfully",
+            "profile": new_profile
+        })),
+        warp::http::StatusCode::CREATED,
+    ))
+}
+
+// Handler for updating an existing profile
+pub async fn handle_update_profile(
+    _app_state: AppState,
+    profile_id: String,
+    profile_request: IncomingProfile,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    // Validate input
+    if profile_request.name.trim().is_empty() {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": false,
+                "error": "Profile name is required and cannot be empty"
+            })),
+            warp::http::StatusCode::BAD_REQUEST,
+        ));
+    }
+
+    if profile_request.color.trim().is_empty() {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": false,
+                "error": "Profile color is required and cannot be empty"
+            })),
+            warp::http::StatusCode::BAD_REQUEST,
+        ));
+    }
+
+    // Get the data directory path
+    let data_dir = env::current_dir()
+        .map_err(|e| {
+            eprintln!("Failed to get current directory: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?
+        .join("data");
+    
+    let config_path = data_dir.join("config.json");
+    
+    // Read existing configuration
+    let config_json = fs::read_to_string(&config_path).await
+        .map_err(|e| {
+            eprintln!("Failed to read configuration file: {}", e);
+            warp::reject::custom(ConfigGetError)
+        })?;
+    
+    let mut config: Configuration = serde_json::from_str(&config_json)
+        .map_err(|e| {
+            eprintln!("Failed to parse configuration JSON: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    // Find and update the profile
+    if let Some(profile_index) = config.profiles.iter().position(|p| p.id == profile_id) {
+        let profile = &mut config.profiles[profile_index];
+        profile.name = profile_request.name.trim().to_string();
+        profile.color = profile_request.color.trim().to_string();
+        
+        let updated_profile_name = profile.name.clone();
+        let updated_profile = profile.clone();
+        
+        // Drop the mutable reference before serializing
+        let _ = profile;
+        
+        // Save updated configuration
+        let updated_config_json = serde_json::to_string_pretty(&config)
+            .map_err(|e| {
+                eprintln!("Failed to serialize configuration: {}", e);
+                warp::reject::custom(ConfigSaveError)
+            })?;
+        
+        fs::write(&config_path, updated_config_json).await
+            .map_err(|e| {
+                eprintln!("Failed to save configuration: {}", e);
+                warp::reject::custom(ConfigSaveError)
+            })?;
+        
+        println!("Profile '{}' updated successfully", updated_profile_name);
+        
+        Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": true,
+                "message": "Profile updated successfully",
+                "profile": updated_profile
+            })),
+            warp::http::StatusCode::OK,
+        ))
+    } else {
+        Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": false,
+                "error": "Profile not found"
+            })),
+            warp::http::StatusCode::NOT_FOUND,
+        ))
+    }
+}
+
+// Handler for deleting a profile
+pub async fn handle_delete_profile(
+    _app_state: AppState,
+    profile_id: String,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    // Get the data directory path
+    let data_dir = env::current_dir()
+        .map_err(|e| {
+            eprintln!("Failed to get current directory: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?
+        .join("data");
+    
+    let config_path = data_dir.join("config.json");
+    
+    // Read existing configuration
+    let config_json = fs::read_to_string(&config_path).await
+        .map_err(|e| {
+            eprintln!("Failed to read configuration file: {}", e);
+            warp::reject::custom(ConfigGetError)
+        })?;
+    
+    let mut config: Configuration = serde_json::from_str(&config_json)
+        .map_err(|e| {
+            eprintln!("Failed to parse configuration JSON: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    // Find and remove the profile
+    if let Some(index) = config.profiles.iter().position(|p| p.id == profile_id) {
+        let removed_profile = config.profiles.remove(index);
+        
+        // Save updated configuration
+        let updated_config_json = serde_json::to_string_pretty(&config)
+            .map_err(|e| {
+                eprintln!("Failed to serialize configuration: {}", e);
+                warp::reject::custom(ConfigSaveError)
+            })?;
+        
+        fs::write(&config_path, updated_config_json).await
+            .map_err(|e| {
+                eprintln!("Failed to save configuration: {}", e);
+                warp::reject::custom(ConfigSaveError)
+            })?;
+        
+        println!("Profile '{}' deleted successfully", removed_profile.name);
+        
+        Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": true,
+                "message": "Profile deleted successfully"
+            })),
+            warp::http::StatusCode::OK,
+        ))
+    } else {
+        Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": false,
+                "error": "Profile not found"
+            })),
+            warp::http::StatusCode::NOT_FOUND,
+        ))
+    }
+}
 
 impl warp::reject::Reject for ConfigGetError {}
 impl warp::reject::Reject for ConfigNotFoundError {}

@@ -333,7 +333,7 @@
         <!-- Server Settings Page -->
         <div id="server-settings-page" class="hidden flex flex-col items-center justify-center min-h-screen p-8">
             <div class="max-w-4xl mx-auto text-center">
-                <h1 class="text-6xl font-bold mb-6 bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-transparent">
+                <h1 class="text-6xl/[1.1] font-bold mb-6 bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-transparent">
                     Server Settings
                 </h1>
                 <p class="text-xl text-gray-300 mb-8 leading-relaxed">
@@ -425,6 +425,92 @@
                         Back to Home
                     </button>
                 </div>
+            </div>
+        </div>
+        <!-- Manage Profiles Page -->
+        <div id="manage-profiles-page" class="hidden flex flex-col items-center justify-center min-h-screen p-8">
+            <div class="w-full max-w-4xl mx-auto text-center">
+                <h1 class="text-6xl/[1.1] font-bold mb-6 bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-transparent">
+                    Manage Profiles
+                </h1>
+                <p class="text-xl text-gray-300 mb-8 leading-relaxed">
+                    Create and manage user profiles for your media server.
+                </p>
+
+                <!-- Profiles List -->
+                <div class="bg-gray-700 border border-gray-500 rounded-lg p-6 mb-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-semibold text-white">Your Profiles</h2>
+                        <button id="manage-add-profile-btn" class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-6 rounded-lg text-lg transition-all duration-200 shadow-lg hover:shadow-xl">
+                            <svg class="w-6 h-6 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Add Profile
+                        </button>
+                    </div>
+                    
+                    <!-- Profiles Grid -->
+                    <div id="profiles-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <!-- Profiles will be dynamically added here -->
+                    </div>
+                    
+                    <!-- Empty State -->
+                    <div id="profiles-empty-state" class="text-center py-12 hidden">
+                        <svg class="w-16 h-16 mx-auto text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                        <p class="text-gray-400 text-lg">No profiles created yet</p>
+                        <p class="text-gray-500 text-sm mt-2">Click "Add Profile" to create your first profile</p>
+                    </div>
+                </div>
+
+                <!-- Error/Success Message -->
+                <div id="manage-profiles-error" class="text-red-400 text-lg text-center hidden mb-6"></div>
+                <div id="manage-profiles-success" class="text-green-400 text-lg text-center hidden mb-6"></div>
+
+                <!-- Back Button -->
+                <div class="pt-6">
+                    <button type="button" id="profiles-back-btn" class="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white font-semibold py-4 px-8 rounded-lg text-lg transition-all duration-200 shadow-lg hover:shadow-xl">
+                        <svg class="w-6 h-6 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Back to Home
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Modal -->
+        <div id="profile-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-gray-800 border border-gray-500 rounded-lg p-8 max-w-md w-full mx-4">
+                <h3 id="profile-modal-title" class="text-2xl font-bold text-white mb-6">Add Profile</h3>
+                
+                <form id="profile-form" class="space-y-6">
+                    <div class="text-left">
+                        <label for="profile-name" class="block text-sm font-medium text-gray-300 mb-2">Profile Name</label>
+                        <input type="text" id="profile-name" name="profile-name" placeholder="Enter profile name" 
+                               class="w-full px-4 py-3 bg-gray-700 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                    </div>
+
+                    <div class="text-left">
+                        <label for="profile-color" class="block text-sm font-medium text-gray-300 mb-2">Profile Color</label>
+                        <div class="flex items-center space-x-4">
+                            <input type="color" id="profile-color" name="profile-color" value="#00C700" 
+                                   class="w-16 h-12 bg-gray-700 border border-gray-500 rounded-lg cursor-pointer">
+                            <input type="text" id="profile-color-text" placeholder="#00C700" 
+                                   class="flex-1 px-4 py-3 bg-gray-700 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                    </div>
+
+                    <div class="flex space-x-4 pt-4">
+                        <button type="button" id="profile-cancel-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                            Cancel
+                        </button>
+                        <button type="submit" id="profile-save-btn" class="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl">
+                            Save Profile
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
