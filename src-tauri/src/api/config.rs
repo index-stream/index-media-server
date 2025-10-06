@@ -1,4 +1,4 @@
-use crate::models::config::{Configuration, IncomingConfiguration, MediaIndex, ServerPasswordUpdate, ServerNameUpdate, ConfigurationResponse, IncomingProfile};
+use crate::models::config::{Configuration, IncomingConfiguration, MediaIndex, ServerPasswordUpdate, ServerNameUpdate, ConfigurationResponse, IncomingProfile, IncomingMediaIndex, IndexUpdateRequest};
 use crate::utils::image::detect_image_extension;
 use crate::api::state::AppState;
 use base64::{Engine as _, engine::general_purpose};
@@ -7,6 +7,7 @@ use tokio::fs;
 use uuid::Uuid;
 use argon2::{Argon2, PasswordHasher};
 use argon2::password_hash::{rand_core::OsRng, SaltString};
+use std::path::PathBuf;
 
 // Helper function to hash a password using Argon2id
 fn hash_password(password: &str) -> Result<String, String> {
@@ -589,6 +590,414 @@ pub async fn handle_delete_profile(
             })),
             warp::http::StatusCode::NOT_FOUND,
         ))
+    }
+}
+
+// Handler for creating a new local index
+pub async fn handle_create_local_index(
+    _app_state: AppState,
+    index_request: IncomingMediaIndex,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    // Validate input
+    if index_request.name.trim().is_empty() {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": false,
+                "error": "Index name is required and cannot be empty"
+            })),
+            warp::http::StatusCode::BAD_REQUEST,
+        ));
+    }
+
+    if index_request.media_type.trim().is_empty() {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": false,
+                "error": "Media type is required and cannot be empty"
+            })),
+            warp::http::StatusCode::BAD_REQUEST,
+        ));
+    }
+
+    // Get the data directory path
+    let data_dir = env::current_dir()
+        .map_err(|e| {
+            eprintln!("Failed to get current directory: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?
+        .join("data");
+    
+    let icons_dir = data_dir.join("icons");
+    let config_path = data_dir.join("config.json");
+    
+    // Create directories if they don't exist
+    fs::create_dir_all(&icons_dir).await
+        .map_err(|e| {
+            eprintln!("Failed to create icons directory: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    // Read existing configuration
+    let config_json = fs::read_to_string(&config_path).await
+        .map_err(|e| {
+            eprintln!("Failed to read configuration file: {}", e);
+            warp::reject::custom(ConfigGetError)
+        })?;
+    
+    let mut config: Configuration = serde_json::from_str(&config_json)
+        .map_err(|e| {
+            eprintln!("Failed to parse configuration JSON: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    // Generate new index ID
+    let index_id = Uuid::new_v4().to_string();
+    
+    // Handle custom icon files if present
+    let final_icon = if let Some(custom_icon_data) = index_request.custom_icon_file {
+        // Decode base64 data
+        let icon_data = general_purpose::STANDARD.decode(custom_icon_data)
+            .map_err(|e| {
+                eprintln!("Failed to decode custom icon: {}", e);
+                warp::reject::custom(ConfigSaveError)
+            })?;
+        
+        // Detect image format and get appropriate extension
+        let extension = detect_image_extension(&icon_data)
+            .map_err(|e| {
+                eprintln!("Failed to detect image format: {}", e);
+                warp::reject::custom(ConfigSaveError)
+            })?;
+        
+        // Save with correct extension using the index id
+        let icon_path = icons_dir.join(format!("{}.{}", index_id, extension));
+        fs::write(&icon_path, icon_data).await
+            .map_err(|e| {
+                eprintln!("Failed to save custom icon: {}", e);
+                warp::reject::custom(ConfigSaveError)
+            })?;
+        
+        println!("Saved custom icon for index '{}' with ID '{}' as {} to: {:?}", 
+                 index_request.name, index_id, extension, icon_path);
+        
+        index_request.icon.clone()
+    } else {
+        index_request.icon.clone()
+    };
+    
+    // Create new index
+    let new_index = MediaIndex {
+        id: index_id.clone(),
+        name: index_request.name.trim().to_string(),
+        media_type: index_request.media_type.trim().to_string(),
+        icon: final_icon,
+        folders: index_request.folders,
+    };
+    
+    // Add index to configuration
+    config.indexes.push(new_index.clone());
+    
+    // Save updated configuration
+    let updated_config_json = serde_json::to_string_pretty(&config)
+        .map_err(|e| {
+            eprintln!("Failed to serialize configuration: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    fs::write(&config_path, updated_config_json).await
+        .map_err(|e| {
+            eprintln!("Failed to save configuration: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    println!("Local index '{}' created successfully with ID: {}", new_index.name, new_index.id);
+    
+    Ok(warp::reply::with_status(
+        warp::reply::json(&serde_json::json!({
+            "success": true,
+            "message": "Local index created successfully",
+            "index": new_index
+        })),
+        warp::http::StatusCode::CREATED,
+    ))
+}
+
+// Handler for updating an existing index
+pub async fn handle_update_index(
+    _app_state: AppState,
+    index_id: String,
+    index_request: IndexUpdateRequest,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    // Validate input
+    if index_request.name.trim().is_empty() {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": false,
+                "error": "Index name is required and cannot be empty"
+            })),
+            warp::http::StatusCode::BAD_REQUEST,
+        ));
+    }
+
+    // Get the data directory path
+    let data_dir = env::current_dir()
+        .map_err(|e| {
+            eprintln!("Failed to get current directory: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?
+        .join("data");
+    
+    let icons_dir = data_dir.join("icons");
+    let config_path = data_dir.join("config.json");
+    
+    // Read existing configuration
+    let config_json = fs::read_to_string(&config_path).await
+        .map_err(|e| {
+            eprintln!("Failed to read configuration file: {}", e);
+            warp::reject::custom(ConfigGetError)
+        })?;
+    
+    let mut config: Configuration = serde_json::from_str(&config_json)
+        .map_err(|e| {
+            eprintln!("Failed to parse configuration JSON: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    // Find and update the index
+    if let Some(index_index) = config.indexes.iter().position(|i| i.id == index_id) {
+        let index = &mut config.indexes[index_index];
+        
+        // Update fields (excluding mediaType)
+        index.name = index_request.name.trim().to_string();
+        index.icon = index_request.icon.trim().to_string();
+        index.folders = index_request.folders;
+        
+        // Handle custom icon files if present
+        if let Some(custom_icon_data) = index_request.custom_icon_file {
+            // Decode base64 data
+            let icon_data = general_purpose::STANDARD.decode(custom_icon_data)
+                .map_err(|e| {
+                    eprintln!("Failed to decode custom icon: {}", e);
+                    warp::reject::custom(ConfigSaveError)
+                })?;
+            
+            // Detect image format and get appropriate extension
+            let extension = detect_image_extension(&icon_data)
+                .map_err(|e| {
+                    eprintln!("Failed to detect image format: {}", e);
+                    warp::reject::custom(ConfigSaveError)
+                })?;
+            
+            // Save with correct extension using the index id
+            let icon_path = icons_dir.join(format!("{}.{}", index_id, extension));
+            fs::write(&icon_path, icon_data).await
+                .map_err(|e| {
+                    eprintln!("Failed to save custom icon: {}", e);
+                    warp::reject::custom(ConfigSaveError)
+                })?;
+            
+            println!("Updated custom icon for index '{}' with ID '{}' as {} to: {:?}", 
+                     index.name, index_id, extension, icon_path);
+        }
+        
+        let updated_index_name = index.name.clone();
+        let updated_index = index.clone();
+        
+        // Drop the mutable reference before serializing
+        let _ = index;
+        
+        // Save updated configuration
+        let updated_config_json = serde_json::to_string_pretty(&config)
+            .map_err(|e| {
+                eprintln!("Failed to serialize configuration: {}", e);
+                warp::reject::custom(ConfigSaveError)
+            })?;
+        
+        fs::write(&config_path, updated_config_json).await
+            .map_err(|e| {
+                eprintln!("Failed to save configuration: {}", e);
+                warp::reject::custom(ConfigSaveError)
+            })?;
+        
+        println!("Index '{}' updated successfully", updated_index_name);
+        
+        Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": true,
+                "message": "Index updated successfully",
+                "index": updated_index
+            })),
+            warp::http::StatusCode::OK,
+        ))
+    } else {
+        Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": false,
+                "error": "Index not found"
+            })),
+            warp::http::StatusCode::NOT_FOUND,
+        ))
+    }
+}
+
+// Handler for deleting an index
+pub async fn handle_delete_index(
+    _app_state: AppState,
+    index_id: String,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    // Get the data directory path
+    let data_dir = env::current_dir()
+        .map_err(|e| {
+            eprintln!("Failed to get current directory: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?
+        .join("data");
+    
+    let config_path = data_dir.join("config.json");
+    
+    // Read existing configuration
+    let config_json = fs::read_to_string(&config_path).await
+        .map_err(|e| {
+            eprintln!("Failed to read configuration file: {}", e);
+            warp::reject::custom(ConfigGetError)
+        })?;
+    
+    let mut config: Configuration = serde_json::from_str(&config_json)
+        .map_err(|e| {
+            eprintln!("Failed to parse configuration JSON: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    // Find and remove the index
+    if let Some(index_pos) = config.indexes.iter().position(|i| i.id == index_id) {
+        let removed_index = config.indexes.remove(index_pos);
+        
+        // Try to remove associated icon file if it exists
+        let icons_dir = data_dir.join("icons");
+        let icon_extensions = ["png", "jpg", "jpeg", "gif", "bmp", "webp"];
+        for ext in &icon_extensions {
+            let icon_path = icons_dir.join(format!("{}.{}", index_id, ext));
+            if icon_path.exists() {
+                if let Err(e) = fs::remove_file(&icon_path).await {
+                    eprintln!("Warning: Failed to remove icon file {:?}: {}", icon_path, e);
+                } else {
+                    println!("Removed icon file: {:?}", icon_path);
+                }
+            }
+        }
+        
+        // Save updated configuration
+        let updated_config_json = serde_json::to_string_pretty(&config)
+            .map_err(|e| {
+                eprintln!("Failed to serialize configuration: {}", e);
+                warp::reject::custom(ConfigSaveError)
+            })?;
+        
+        fs::write(&config_path, updated_config_json).await
+            .map_err(|e| {
+                eprintln!("Failed to save configuration: {}", e);
+                warp::reject::custom(ConfigSaveError)
+            })?;
+        
+        println!("Index '{}' deleted successfully", removed_index.name);
+        
+        Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": true,
+                "message": "Index deleted successfully"
+            })),
+            warp::http::StatusCode::OK,
+        ))
+    } else {
+        Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": false,
+                "error": "Index not found"
+            })),
+            warp::http::StatusCode::NOT_FOUND,
+        ))
+    }
+}
+
+// Handler for serving custom icons by index ID
+pub async fn handle_get_index_icon(index_id: String) -> Result<Box<dyn warp::Reply>, warp::Rejection> {
+    // Validate index ID
+    if index_id.trim().is_empty() {
+        return Ok(Box::new(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!({
+                "success": false,
+                "error": "Index ID is required"
+            })),
+            warp::http::StatusCode::BAD_REQUEST,
+        )));
+    }
+
+    // Get the data directory path
+    let data_dir = env::current_dir()
+        .map_err(|e| {
+            eprintln!("Failed to get current directory: {}", e);
+            warp::reject::custom(ConfigGetError)
+        })?
+        .join("data")
+        .join("icons");
+
+    // Try to find the icon file with common image extensions
+    let extensions = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"];
+    let mut icon_path: Option<PathBuf> = None;
+    let mut found_extension: Option<&str> = None;
+
+    for ext in &extensions {
+        let test_path = data_dir.join(format!("{}.{}", index_id, ext));
+        if test_path.exists() {
+            icon_path = Some(test_path);
+            found_extension = Some(ext);
+            break;
+        }
+    }
+
+    match icon_path {
+        Some(path) => {
+            // Read the icon file
+            let icon_data = fs::read(&path).await
+                .map_err(|e| {
+                    eprintln!("Failed to read icon file: {}", e);
+                    warp::reject::custom(ConfigGetError)
+                })?;
+
+            // Determine content type based on extension
+            let content_type = match found_extension.unwrap_or("png") {
+                "png" => "image/png",
+                "jpg" | "jpeg" => "image/jpeg",
+                "gif" => "image/gif",
+                "webp" => "image/webp",
+                "svg" => "image/svg+xml",
+                "bmp" => "image/bmp",
+                "ico" => "image/x-icon",
+                _ => "image/png", // Default fallback
+            };
+
+            // Return the image data with appropriate content type
+            let mut response = warp::reply::Response::new(icon_data.into());
+            response.headers_mut().insert(
+                "content-type",
+                warp::http::HeaderValue::from_static(content_type),
+            );
+            response.headers_mut().insert(
+                "cache-control",
+                warp::http::HeaderValue::from_static("public, max-age=3600"),
+            );
+            Ok(Box::new(response))
+        }
+        None => {
+            // Return 404 if no icon found
+            Ok(Box::new(warp::reply::with_status(
+                warp::reply::json(&serde_json::json!({
+                    "success": false,
+                    "error": "Icon not found"
+                })),
+                warp::http::StatusCode::NOT_FOUND,
+            )))
+        }
     }
 }
 

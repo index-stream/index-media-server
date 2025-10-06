@@ -8,7 +8,7 @@ pub struct Profile {
     pub color: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MediaIndex {
     pub id: String,
     pub name: String,
@@ -84,4 +84,14 @@ pub struct ServerPasswordUpdate {
 #[derive(Debug, Deserialize)]
 pub struct ServerNameUpdate {
     pub name: String,
+}
+
+// Request structure for updating an index (excludes mediaType)
+#[derive(Debug, Deserialize)]
+pub struct IndexUpdateRequest {
+    pub name: String,
+    pub icon: String,
+    #[serde(rename = "customIconFile")]
+    pub custom_icon_file: Option<String>, // Base64 encoded image data
+    pub folders: Vec<String>,
 }

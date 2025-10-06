@@ -439,7 +439,7 @@
 
                 <!-- Profiles List -->
                 <div class="bg-gray-700 border border-gray-500 rounded-lg p-6 mb-8">
-                    <div class="flex justify-between items-center mb-6">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
                         <h2 class="text-2xl font-semibold text-white">Your Profiles</h2>
                         <button id="manage-add-profile-btn" class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-6 rounded-lg text-lg transition-all duration-200 shadow-lg hover:shadow-xl">
                             <svg class="w-6 h-6 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -475,6 +475,381 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                         </svg>
                         Back to Home
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manage Indexes Page -->
+        <div id="manage-indexes-page" class="hidden flex flex-col items-center justify-center min-h-screen p-8">
+            <div class="w-full max-w-4xl mx-auto text-center">
+                <h1 class="text-6xl/[1.1] font-bold mb-6 bg-gradient-to-r from-blue-500 to-green-500 bg-clip-text text-transparent">
+                    Manage Indexes
+                </h1>
+                <p class="text-xl text-gray-300 mb-8 leading-relaxed">
+                    Create and manage media indexes for your server.
+                </p>
+
+                <!-- Indexes List -->
+                <div class="bg-gray-700 border border-gray-500 rounded-lg p-6 mb-8">
+                    <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 space-y-4 md:space-y-0">
+                        <h2 class="text-2xl font-semibold text-white">Your Indexes</h2>
+                        <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 sm:mx-auto md:mx-0">
+                            <button id="manage-add-local-index-btn" class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-6 rounded-lg text-lg transition-all duration-200 shadow-lg hover:shadow-xl">
+                                <svg class="w-6 h-6 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                Add Local Index
+                            </button>
+                            <button id="manage-add-plugin-index-btn" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-3 px-6 rounded-lg text-lg transition-all duration-200 shadow-lg hover:shadow-xl">
+                                <svg class="w-6 h-6 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                                </svg>
+                                Add Plugin Index
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Indexes Grid -->
+                    <div id="indexes-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <!-- Indexes will be dynamically added here -->
+                    </div>
+                    
+                    <!-- Empty State -->
+                    <div id="indexes-empty-state" class="text-center py-12 hidden">
+                        <svg class="w-16 h-16 mx-auto text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                        </svg>
+                        <p class="text-gray-400 text-lg">No indexes created yet</p>
+                        <p class="text-gray-500 text-sm mt-2">Click "Add Local Index" to create your first index</p>
+                    </div>
+                </div>
+
+                <!-- Error/Success Message -->
+                <div id="manage-indexes-error" class="text-red-400 text-lg text-center hidden mb-6"></div>
+                <div id="manage-indexes-success" class="text-green-400 text-lg text-center hidden mb-6"></div>
+
+                <!-- Back Button -->
+                <div class="pt-6">
+                    <button type="button" id="indexes-back-btn" class="bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white font-semibold py-4 px-8 rounded-lg text-lg transition-all duration-200 shadow-lg hover:shadow-xl">
+                        <svg class="w-6 h-6 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Back to Home
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Index Modal -->
+        <div id="add-index-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-gray-800 border border-gray-500 rounded-lg p-8 max-w-md w-full mx-4">
+                <h3 class="text-2xl font-bold text-white mb-6">Add Local Index</h3>
+                
+                <!-- Step 1: Name and Media Type -->
+                <div id="add-index-step-1" class="space-y-6">
+                    <div class="text-left">
+                        <label for="add-index-name" class="block text-sm font-medium text-gray-300 mb-2">Index Name</label>
+                        <input type="text" id="add-index-name" name="index-name" placeholder="Enter index name" 
+                               class="w-full px-4 py-3 bg-gray-700 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                    </div>
+
+                    <div class="text-left">
+                        <label for="add-index-media-type" class="block text-sm font-medium text-gray-300 mb-3">Media Type</label>
+                        <div class="grid grid-cols-3 gap-4 mb-4">
+                            <!-- Videos -->
+                            <div class="media-type-option" data-type="videos">
+                                <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl flex items-center justify-center border-2 border-transparent hover:border-white hover:from-blue-500 hover:to-blue-600 cursor-pointer bg-origin-border hover:scale-105">
+                                    <img src="./images/icon_movie.svg" alt="Videos" class="w-10 h-10">
+                                </div>
+                                <p class="text-sm text-gray-300 mt-2 text-center">Videos</p>
+                            </div>
+                            <!-- Music -->
+                            <div class="media-type-option" data-type="music">
+                                <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-r from-green-600 to-green-700 rounded-xl flex items-center justify-center border-2 border-transparent hover:border-white hover:from-green-500 hover:to-green-600 cursor-pointer bg-origin-border hover:scale-105">
+                                    <img src="./images/icon_music.svg" alt="Music" class="w-10 h-10">
+                                </div>
+                                <p class="text-sm text-gray-300 mt-2 text-center">Music</p>
+                            </div>
+                            <!-- Photos -->
+                            <div class="media-type-option" data-type="photos">
+                                <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-r from-purple-600 to-purple-700 rounded-xl flex items-center justify-center border-2 border-transparent hover:border-white hover:from-purple-500 hover:to-purple-600 cursor-pointer bg-origin-border hover:scale-105">
+                                    <img src="./images/icon_image.svg" alt="Photos" class="w-10 h-10">
+                                </div>
+                                <p class="text-sm text-gray-300 mt-2 text-center">Photos</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex space-x-4 pt-4">
+                        <button type="button" id="add-index-cancel-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                            Cancel
+                        </button>
+                        <button type="button" id="add-index-continue-to-icon-btn" class="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl">
+                            Continue
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Icon Selection -->
+                <div id="add-index-step-2" class="hidden space-y-6">
+                    <div class="text-left">
+                        <label for="add-index-icon" class="block text-sm font-medium text-gray-300 mb-3">Choose Icon</label>
+                        <div class="grid grid-cols-5 gap-4 mb-4">
+                            <!-- Default Icons -->
+                            <div class="icon-option" data-icon="home">
+                                <div class="w-16 h-16 mx-auto bg-gradient-to-r from-slate-600 to-slate-700 rounded-xl flex items-center justify-center cursor-pointer hover:from-slate-500 hover:to-slate-600 transition-all duration-200 border-2 border-transparent hover:border-white bg-origin-border hover:scale-105">
+                                    <img src="./images/icon_home.svg" alt="Home Icon" class="w-8 h-8">
+                                </div>
+                            </div>
+                            <div class="icon-option" data-icon="movie">
+                                <div class="w-16 h-16 mx-auto bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl flex items-center justify-center cursor-pointer hover:from-blue-500 hover:to-blue-600 transition-all duration-200 border-2 border-transparent hover:border-white bg-origin-border hover:scale-105">
+                                    <img src="./images/icon_movie.svg" alt="Movie Icon" class="w-8 h-8">
+                                </div>
+                            </div>
+                            <div class="icon-option" data-icon="music">
+                                <div class="w-16 h-16 mx-auto bg-gradient-to-r from-green-600 to-green-700 rounded-xl flex items-center justify-center cursor-pointer hover:from-green-500 hover:to-green-600 transition-all duration-200 border-2 border-transparent hover:border-white bg-origin-border hover:scale-105">
+                                    <img src="./images/icon_music.svg" alt="Music Icon" class="w-8 h-8">
+                                </div>
+                            </div>
+                            <div class="icon-option" data-icon="image">
+                                <div class="w-16 h-16 mx-auto bg-gradient-to-r from-purple-600 to-purple-700 rounded-xl flex items-center justify-center cursor-pointer hover:from-purple-500 hover:to-purple-600 transition-all duration-200 border-2 border-transparent hover:border-white bg-origin-border hover:scale-105">
+                                    <img src="./images/icon_image.svg" alt="Image Icon" class="w-8 h-8">
+                                </div>
+                            </div>
+                            
+                            <!-- Custom Upload Option -->
+                            <div class="icon-option" data-icon="custom">
+                                <div id="add-custom-icon-preview" class="w-16 h-16 mx-auto rounded-lg border-2 border-dashed border-gray-400 hover:border-white cursor-pointer flex items-center justify-center bg-gray-700 hover:bg-gray-600 transition-colors hover:scale-105 overflow-hidden">
+                                    <div class="w-full h-full flex items-center justify-center">
+                                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-2 text-center">Upload</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Hidden file input -->
+                        <input type="file" id="add-custom-icon" name="custom-icon" accept="image/*" class="hidden">
+                    </div>
+
+                    <div class="flex space-x-4 pt-4">
+                        <button type="button" id="add-index-back-to-name-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                            Back
+                        </button>
+                        <button type="button" id="add-index-continue-to-folders-btn" class="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl">
+                            Continue
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Folder Selection -->
+                <div id="add-index-step-3" class="hidden space-y-6">
+                    <div class="text-left">
+                        <label class="block text-sm font-medium text-gray-300 mb-3">Selected Folders</label>
+                        
+                        <!-- Selected Folders List -->
+                        <div id="add-index-selected-folders-list" class="space-y-2 mb-4 min-h-[100px] border border-gray-500 rounded-lg p-4 bg-gray-700">
+                            <p class="text-gray-500 text-sm text-center py-8">No folders selected yet</p>
+                        </div>
+                        
+                        <!-- Add Folders Button -->
+                        <button type="button" id="add-index-add-folders-btn" class="w-full bg-gray-600 hover:bg-gray-500 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 border-2 border-dashed border-gray-400 hover:border-gray-300">
+                            <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Add Folders
+                        </button>
+                    </div>
+
+                    <div class="flex space-x-4 pt-4">
+                        <button type="button" id="add-index-back-to-icon-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                            Back
+                        </button>
+                        <button type="button" id="add-index-save-btn" class="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl">
+                            Create Index
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Error Message -->
+                <div id="add-index-error" class="text-red-400 text-sm text-center hidden mt-4"></div>
+            </div>
+        </div>
+
+        <!-- Update Index Modal -->
+        <div id="update-index-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-gray-800 border border-gray-500 rounded-lg p-8 max-w-md w-full mx-4">
+                <h3 class="text-2xl font-bold text-white mb-6">Update Index</h3>
+                
+                <!-- Error Message -->
+                <div id="update-index-error" class="text-red-400 text-sm text-center hidden mb-4"></div>
+                
+                <!-- Main View -->
+                <div id="update-index-view-main" class="space-y-6">
+                    <div class="text-left">
+                        <h4 class="text-lg font-semibold text-white mb-4">Index Information</h4>
+                        <div class="bg-gray-700 border border-gray-500 rounded-lg p-4 space-y-3">
+                            <div class="flex items-center space-x-3">
+                                <div id="update-index-icon-display" class="w-8 h-8 flex items-center justify-center flex-shrink-0">
+                                    <!-- Icon will be populated here -->
+                                </div>
+                                <div>
+                                    <p class="text-white font-medium" id="update-index-name-display">Index Name</p>
+                                    <p class="text-gray-400 text-sm" id="update-index-media-type-display">Media Type</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                                </svg>
+                                <span class="text-gray-300 text-sm" id="update-index-folders-count">0 folders</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-left">
+                        <h4 class="text-lg font-semibold text-white mb-4">What would you like to update?</h4>
+                        <div class="space-y-3">
+                            <button type="button" id="update-index-name-btn" class="w-full bg-gray-600 hover:bg-gray-500 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 text-left">
+                                <svg class="w-5 h-5 inline mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                Update Name
+                            </button>
+                            <button type="button" id="update-index-icon-btn" class="w-full bg-gray-600 hover:bg-gray-500 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 text-left">
+                                <svg class="w-5 h-5 inline mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"></path>
+                                </svg>
+                                Update Icon
+                            </button>
+                            <button type="button" id="update-index-folders-btn" class="w-full bg-gray-600 hover:bg-gray-500 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 text-left">
+                                <svg class="w-5 h-5 inline mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                                </svg>
+                                Update Source Folders
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex space-x-4 pt-4">
+                        <button type="button" id="update-index-cancel-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                            Cancel
+                        </button>
+                        <button type="button" id="update-index-save-btn" class="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl">
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Name Edit View -->
+                <div id="update-index-view-name" class="hidden space-y-6">
+                    <div class="text-left">
+                        <label for="update-index-name-input" class="block text-sm font-medium text-gray-300 mb-2">Index Name</label>
+                        <input type="text" id="update-index-name-input" name="index-name" placeholder="Enter index name" 
+                               class="w-full px-4 py-3 bg-gray-700 border border-gray-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                    </div>
+
+                    <div class="flex space-x-4 pt-4">
+                        <button type="button" id="update-index-back-from-name-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                            Back
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Icon Edit View -->
+                <div id="update-index-view-icon" class="hidden space-y-6">
+                    <div class="text-left">
+                        <label for="update-index-icon" class="block text-sm font-medium text-gray-300 mb-3">Choose Icon</label>
+                        <div class="grid grid-cols-5 gap-4 mb-4">
+                            <!-- Default Icons -->
+                            <div class="icon-option" data-icon="home">
+                                <div class="w-16 h-16 mx-auto bg-gradient-to-r from-slate-600 to-slate-700 rounded-xl flex items-center justify-center cursor-pointer hover:from-slate-500 hover:to-slate-600 transition-all duration-200 border-2 border-transparent hover:border-white bg-origin-border hover:scale-105">
+                                    <img src="./images/icon_home.svg" alt="Home Icon" class="w-8 h-8">
+                                </div>
+                            </div>
+                            <div class="icon-option" data-icon="movie">
+                                <div class="w-16 h-16 mx-auto bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl flex items-center justify-center cursor-pointer hover:from-blue-500 hover:to-blue-600 transition-all duration-200 border-2 border-transparent hover:border-white bg-origin-border hover:scale-105">
+                                    <img src="./images/icon_movie.svg" alt="Movie Icon" class="w-8 h-8">
+                                </div>
+                            </div>
+                            <div class="icon-option" data-icon="music">
+                                <div class="w-16 h-16 mx-auto bg-gradient-to-r from-green-600 to-green-700 rounded-xl flex items-center justify-center cursor-pointer hover:from-green-500 hover:to-green-600 transition-all duration-200 border-2 border-transparent hover:border-white bg-origin-border hover:scale-105">
+                                    <img src="./images/icon_music.svg" alt="Music Icon" class="w-8 h-8">
+                                </div>
+                            </div>
+                            <div class="icon-option" data-icon="image">
+                                <div class="w-16 h-16 mx-auto bg-gradient-to-r from-purple-600 to-purple-700 rounded-xl flex items-center justify-center cursor-pointer hover:from-purple-500 hover:to-purple-600 transition-all duration-200 border-2 border-transparent hover:border-white bg-origin-border hover:scale-105">
+                                    <img src="./images/icon_image.svg" alt="Image Icon" class="w-8 h-8">
+                                </div>
+                            </div>
+                            
+                            <!-- Custom Upload Option -->
+                            <div class="icon-option" data-icon="custom">
+                                <div id="update-custom-icon-preview" class="w-16 h-16 mx-auto rounded-lg border-2 border-dashed border-gray-400 hover:border-white cursor-pointer flex items-center justify-center bg-gray-700 hover:bg-gray-600 transition-colors hover:scale-105 overflow-hidden">
+                                    <div class="w-full h-full flex items-center justify-center">
+                                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-2 text-center">Upload</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Hidden file input -->
+                        <input type="file" id="update-custom-icon" name="custom-icon" accept="image/*" class="hidden">
+                    </div>
+
+                    <div class="flex space-x-4 pt-4">
+                        <button type="button" id="update-index-back-from-icon-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                            Back
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Folders Edit View -->
+                <div id="update-index-view-folders" class="hidden space-y-6">
+                    <div class="text-left">
+                        <label class="block text-sm font-medium text-gray-300 mb-3">Selected Folders</label>
+                        
+                        <!-- Selected Folders List -->
+                        <div id="update-index-selected-folders-list" class="space-y-2 mb-4 min-h-[100px] border border-gray-500 rounded-lg p-4 bg-gray-700">
+                            <p class="text-gray-500 text-sm text-center py-8">No folders selected yet</p>
+                        </div>
+                        
+                        <!-- Add Folders Button -->
+                        <button type="button" id="update-index-add-folders-btn" class="w-full bg-gray-600 hover:bg-gray-500 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 border-2 border-dashed border-gray-400 hover:border-gray-300">
+                            <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Add Folders
+                        </button>
+                    </div>
+
+                    <div class="flex space-x-4 pt-4">
+                        <button type="button" id="update-index-back-from-folders-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200">
+                            Back
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plugin Coming Soon Modal -->
+        <div id="plugin-coming-soon-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-gray-800 border border-gray-500 rounded-lg p-8 max-w-md w-full mx-4">
+                <h3 class="text-2xl font-bold text-white mb-6">Plugin Indexes Coming Soon</h3>
+                <div class="text-center">
+                    <svg class="w-16 h-16 mx-auto text-purple-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                    </svg>
+                    <p class="text-gray-300 text-lg mb-4">Plugin-based indexes are not yet available.</p>
+                    <p class="text-gray-400 text-sm mb-6">This feature will allow you to connect to media managed by third-party services.</p>
+                    <button type="button" id="plugin-coming-soon-close-btn" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl">
+                        Got it!
                     </button>
                 </div>
             </div>

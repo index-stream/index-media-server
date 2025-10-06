@@ -63,13 +63,13 @@ export default class SetupPage extends Page {
         backToPasswordBtn?.addEventListener('click', () => this.backToPasswordStep());
 
         // Step 4: Media type selection
-        const mediaTypeOptions = document.querySelectorAll('.media-type-option');
+        const mediaTypeOptions = document.querySelectorAll('#setup-step-4 .media-type-option');
         mediaTypeOptions.forEach(option => {
             option.addEventListener('click', () => this.selectMediaType(option));
         });
 
         // Step 5: Icon selection
-        const iconOptions = document.querySelectorAll('.icon-option');
+        const iconOptions = document.querySelectorAll('#setup-step-5 .icon-option');
         iconOptions.forEach(option => {
             option.addEventListener('click', () => this.selectIcon(option));
         });
@@ -518,7 +518,7 @@ export default class SetupPage extends Page {
         }
 
         // Remove selection from all options
-        document.querySelectorAll('.icon-option').forEach(option => {
+        document.querySelectorAll('#setup-step-5 .icon-option').forEach(option => {
             const img = option.querySelector('div');
             if (img) {
                 img.classList.remove('border-white');
@@ -542,7 +542,7 @@ export default class SetupPage extends Page {
         const mediaType = optionElement.dataset.type;
         
         // Remove selection from all options
-        document.querySelectorAll('.media-type-option').forEach(option => {
+        document.querySelectorAll('#setup-step-4 .media-type-option').forEach(option => {
             const img = option.querySelector('div');
             if (img) {
                 img.classList.remove('border-white');

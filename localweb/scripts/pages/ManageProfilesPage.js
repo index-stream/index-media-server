@@ -2,6 +2,7 @@ import Page from './Page.js';
 import { PAGES } from '../constants.js';
 import Backend from '../clients/Backend.js';
 import Config from '../models/Config.js';
+import { escapeHtml, getInitials } from '../utils/text.js';
 
 export default class ManageProfilesPage extends Page {
     constructor() {
@@ -244,9 +245,9 @@ export default class ManageProfilesPage extends Page {
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center space-x-3 overflow-hidden">
                         <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0" style="background-color: ${profile.color}">
-                            ${this.getInitials(profile.name)}
+                            ${getInitials(profile.name)}
                         </div>
-                        <h3 class="text-lg font-semibold text-white truncate" title="${this.escapeHtml(profile.name)}">${this.escapeHtml(profile.name)}</h3>
+                        <h3 class="text-lg font-semibold text-white truncate" title="${escapeHtml(profile.name)}">${escapeHtml(profile.name)}</h3>
                     </div>
                     <div class="flex space-x-2">
                         <button class="edit-profile-btn text-blue-400 hover:text-blue-300 p-1" data-profile-id="${profile.id}">
@@ -263,7 +264,7 @@ export default class ManageProfilesPage extends Page {
                 </div>
                 <div class="text-sm text-gray-400">
                     <span class="inline-block w-3 h-3 rounded-full mr-2" style="background-color: ${profile.color}"></span>
-                    ${this.escapeHtml(profile.color)}
+                    ${escapeHtml(profile.color)}
                 </div>
             </div>
         `).join('');
@@ -285,21 +286,6 @@ export default class ManageProfilesPage extends Page {
                 this.deleteProfile(profileId);
             });
         });
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    getInitials(name) {
-        if (!name) return '';
-        return name.trim()
-            .split(' ')
-            .map(word => word.charAt(0).toUpperCase())
-            .slice(0, 1) // Take only first initial
-            .join('');
     }
 
     async loadProfiles() {

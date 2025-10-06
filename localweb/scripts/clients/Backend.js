@@ -5,14 +5,6 @@ class Backend {
         this._token = new URLSearchParams(window.location.search).get('token');
     }
 
-    async createProfile(profile) {
-        return this._postAuthenticated('/profile', profile);
-    }
-
-    async deleteProfile(profileId) {
-        return this._deleteAuthenticated('/profile/' + profileId);
-    }
-
     async getFolders() {
         return this._postAuthenticated('/select-folders');
     }
@@ -29,16 +21,36 @@ class Backend {
         return this._getAuthenticated('/connect-code');
     }
 
-    async updateProfile(profile) {
-        return this._putAuthenticated('/profile/' + profile.id, profile);
-    }
-
     async updateServerName(name) {
         return this._putAuthenticated('/server/name', { name });
     }
 
     async updateServerPassword(password) {
         return this._putAuthenticated('/server/password', { password });
+    }
+
+    async createLocalIndex(index) {
+        return this._postAuthenticated('/index/local', index);
+    }
+
+    async updateIndex(index) {
+        return this._putAuthenticated('/index/' + index.id, index);
+    }
+
+    async deleteIndex(indexId) {
+        return this._deleteAuthenticated('/index/' + indexId);
+    }
+
+    async createProfile(profile) {
+        return this._postAuthenticated('/profile', profile);
+    }
+
+    async updateProfile(profile) {
+        return this._putAuthenticated('/profile/' + profile.id, profile);
+    }
+
+    async deleteProfile(profileId) {
+        return this._deleteAuthenticated('/profile/' + profileId);
     }
 
     async _handleError(response) {

@@ -32,8 +32,9 @@ export default class HomePage extends Page {
     }
 
     onManageIndexesClick() {
-        console.log('Manage indexes clicked - TODO: Implement index management');
-        // TODO: Navigate to index management page or show modal
+        document.dispatchEvent(new CustomEvent('navigate', {
+            detail: { page: PAGES.MANAGE_INDEXES }
+        }));
     }
 
     onServerSettingsClick() {

@@ -78,6 +78,39 @@ class Config {
         return this._config?.indexes || [];
     }
 
+    // Add a new index (local update)
+    addIndex(index) {
+        if (this._config) {
+            if (!this._config.indexes) {
+                this._config.indexes = [];
+            }
+            this._config.indexes.push(index);
+            console.log('Index added locally:', index);
+        }
+    }
+
+    // Update an existing index (local update)
+    updateIndex(updatedIndex) {
+        if (this._config && this._config.indexes) {
+            const index = this._config.indexes.findIndex(i => i.id === updatedIndex.id);
+            if (index !== -1) {
+                this._config.indexes[index] = updatedIndex;
+                console.log('Index updated locally:', updatedIndex);
+            }
+        }
+    }
+
+    // Remove an index (local update)
+    removeIndex(indexId) {
+        if (this._config && this._config.indexes) {
+            const index = this._config.indexes.findIndex(i => i.id === indexId);
+            if (index !== -1) {
+                const removedIndex = this._config.indexes.splice(index, 1)[0];
+                console.log('Index removed locally:', removedIndex);
+            }
+        }
+    }
+
     // Get config ID
     getId() {
         return this._config?.id;

@@ -4,6 +4,7 @@ export const PAGES = {
     HOME: 'home',
     SERVER_SETTINGS: 'server-settings',
     MANAGE_PROFILES: 'manage-profiles',
+    MANAGE_INDEXES: 'manage-indexes',
     // Add other page constants as needed
 };
 
