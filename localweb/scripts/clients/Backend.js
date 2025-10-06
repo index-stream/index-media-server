@@ -2,31 +2,31 @@ import { API_URL } from '../constants.js';
 
 class Backend {
     constructor() {
-        this._authExpiration = Number(localStorage.getItem('authExpiration'));
+        this._token = new URLSearchParams(window.location.search).get('token');
     }
 
     async getFolders() {
-        return this._post('/select-folders');
+        return this._postAuthenticated('/select-folders');
     }
 
     async getConfiguration() {
-        return this._get('/config');
+        return this._getAuthenticated('/config');
     }
 
     async saveConfiguration(config) {
-        return this._post('/config', config);
+        return this._postAuthenticated('/config', config);
     }
 
     async getConnectCode() {
-        return this._get('/connect-code');
+        return this._getAuthenticated('/connect-code');
     }
 
     async updateServerName(name) {
-        return this._put('/server/name', { name });
+        return this._putAuthenticated('/server/name', { name });
     }
 
     async updateServerPassword(password) {
-        return this._put('/server/password', { password });
+        return this._putAuthenticated('/server/password', { password });
     }
 
     async _handleError(response) {
@@ -59,21 +59,14 @@ class Backend {
         return await response.json();
     }
 
-    isAuthenticated() {
-        return !isNaN(this._authExpiration) && this._authExpiration > Date.now();
-    }
-
     async _getAuthenticated(path, params, apiUrl = API_URL) {
-        if(!this.isAuthenticated())
-            location.href = '/login';
-            
         const queryString = params ? `?${new URLSearchParams(params)}` : '';
         const response = await fetch(apiUrl + path + queryString, {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this._token}`
             },
-            credentials: 'include',
         });
         
         if (!response.ok) {
@@ -86,10 +79,9 @@ class Backend {
         const response = await fetch(apiUrl + path, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
             },
             body: JSON.stringify(request),
-            credentials: 'include'
         });
 
         if (!response.ok) {
@@ -99,16 +91,13 @@ class Backend {
     }
 
     async _postAuthenticated(path, request, apiUrl = API_URL) {
-        if(!this.isAuthenticated())
-            location.href = '/login';
-
         const response = await fetch(apiUrl + path, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this._token}`
             },
             body: JSON.stringify(request),
-            credentials: 'include'
         });
 
         if (!response.ok) {
@@ -134,16 +123,13 @@ class Backend {
     }
 
     async _putAuthenticated(path, request, apiUrl = API_URL) {
-        if(!this.isAuthenticated())
-            location.href = '/login';
-
         const response = await fetch(apiUrl + path, {
             method: 'PUT',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this._token}`
             },
             body: JSON.stringify(request),
-            credentials: 'include'
         });
 
         if (!response.ok) {
@@ -169,15 +155,13 @@ class Backend {
 
     async _deleteAuthenticated(path, params, apiUrl = API_URL) {
         const queryString = params ? `?${new URLSearchParams(params)}` : '';
-        if(!this.isAuthenticated())
-            location.href = '/login';
 
         const response = await fetch(apiUrl + path + queryString, {
             method: 'DELETE',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this._token}`
             },
-            credentials: 'include'
         });
 
         if (!response.ok) {

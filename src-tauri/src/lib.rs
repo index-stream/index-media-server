@@ -15,6 +15,7 @@ pub use api::state::{AppState, ExtendedAppState, ServerState};
 pub use models::config::{Configuration, IncomingConfiguration, ServerPasswordUpdate, ServerNameUpdate, ConfigurationResponse};
 pub use constants::{DEFAULT_HTTPS_PORT, DEFAULT_HTTP_PORT};
 pub use utils::network::find_available_port;
+pub use utils::token::generate_secure_token;
 
 // Re-export error types for custom rejection handling
 pub use api::config::{ConfigNotFoundError, ConfigGetError};

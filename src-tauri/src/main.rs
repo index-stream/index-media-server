@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use index_media_server_lib::{AppState, ExtendedAppState, ServerState, DEFAULT_HTTP_PORT, find_available_port, start_http_server, start_https_server};
+use index_media_server_lib::{AppState, ExtendedAppState, ServerState, DEFAULT_HTTP_PORT, find_available_port, start_http_server, start_https_server, generate_secure_token};
 
 use tauri::{
   menu::{Menu, MenuItem},
@@ -43,11 +43,15 @@ fn main() {
         }
       };
 
+      // Generate a secure token for local access
+      let startup_token = generate_secure_token();
+
       // Start HTTP server for browser communication and static file serving
       let app_state_http = app_state_clone.clone();
       let extended_state_http = extended_state_clone.clone();
+      let startup_token_http = startup_token.clone();
       tauri::async_runtime::spawn(async move {
-        if let Err(e) = start_http_server(http_port, app_state_http, extended_state_http).await {
+        if let Err(e) = start_http_server(http_port, app_state_http, extended_state_http, startup_token_http).await {
           eprintln!("Failed to start HTTP server: {}", e);
         }
       });
@@ -71,7 +75,8 @@ fn main() {
       // Open web interface in browser on startup (only in production)
       #[cfg(not(debug_assertions))]
       {
-        let _ = app.opener().open_url(&format!("http://localhost:{}", http_port), None::<&str>);
+        let url = format!("http://localhost:{}?token={}", http_port, startup_token);
+        let _ = app.opener().open_url(&url, None::<&str>);
       }
 
       // tray icon setup
@@ -88,7 +93,11 @@ fn main() {
         .menu(&menu)
         .on_menu_event(move |app, e| match e.id.as_ref() {
           "open" => { 
-            let url = format!("http://localhost:{}{}", http_port, if cfg!(debug_assertions) { "?dev=local" } else { "" });
+            let url = format!("http://localhost:{}?token={}{}", 
+              http_port, 
+              startup_token,
+              if cfg!(debug_assertions) { "&dev=local" } else { "" }
+            );
             let _ = app.opener().open_url(&url, None::<&str>); 
           }
           "quit" => {
