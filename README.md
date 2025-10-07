@@ -41,10 +41,10 @@ cd index-media-server
 npm install
 
 # Run in development mode
-npm run tauri dev
+npm run dev
 
 # (Optional) build the Tauri application
-npm run tauri build
+npm run build
 ```
 
 The server will start and appear in your system tray. Click the tray icon to open the web interface.
