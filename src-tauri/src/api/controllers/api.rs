@@ -1,5 +1,7 @@
 use crate::api::router::{HttpRequest, HttpResponse};
 use crate::models::config::Configuration;
+use crate::config::config_path;
+use crate::api::controllers::icon::get_app_handle;
 use serde_json;
 use std::future::Future;
 use std::pin::Pin;
@@ -11,7 +13,12 @@ static SERVER_ID_CACHE: OnceLock<Arc<Mutex<Option<String>>>> = OnceLock::new();
 
 /// Load configuration from file (same as in auth.rs)
 async fn load_configuration() -> Result<Option<Configuration>, Box<dyn std::error::Error + Send + Sync>> {
-    let config_path = std::env::current_dir()?.join("data").join("config.json");
+    let app_handle = get_app_handle().ok_or("App handle not initialized")?;
+    let config_path = config_path(app_handle)
+        .map_err(|e| {
+            eprintln!("Failed to get config path: {}", e);
+            std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e))
+        })?;
     
     if !config_path.exists() {
         return Ok(None);

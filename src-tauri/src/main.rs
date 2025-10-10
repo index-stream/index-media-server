@@ -33,6 +33,9 @@ fn main() {
         // Initialize icon app handle for HTTPS server
         index_media_server_lib::api::controllers::icon::init_icon_app_handle(app.handle().clone());
         
+        // Initialize auth app handle for HTTPS server
+        index_media_server_lib::api::controllers::auth::init_auth_app_handle(app.handle().clone());
+        
         let app_handle = Arc::new(Mutex::new(Some(app.handle().clone())));
         let https_port = Arc::new(Mutex::new(None));
         Ok::<AppState, anyhow::Error>(AppState {

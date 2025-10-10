@@ -12,6 +12,11 @@ pub fn init_icon_app_handle(app_handle: tauri::AppHandle) {
     APP_HANDLE.set(app_handle).expect("Failed to initialize icon app handle");
 }
 
+/// Get the global app handle for icon operations
+pub fn get_app_handle() -> Option<&'static tauri::AppHandle> {
+    APP_HANDLE.get()
+}
+
 /// Handle icon endpoint for serving custom icons by index ID
 pub fn handle_index_icon(request: &HttpRequest) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<HttpResponse, Box<dyn std::error::Error + Send + Sync>>> + Send + 'static>> {
     let request = request.clone();
@@ -34,23 +39,12 @@ pub fn handle_index_icon(request: &HttpRequest) -> std::pin::Pin<Box<dyn std::fu
         }
         
         // Get the icons directory path using OS app data directory
-        let icons_dir = match APP_HANDLE.get() {
-            Some(app_handle) => icons_dir(app_handle)
-                .map_err(|e| {
-                    eprintln!("Failed to get icons directory: {}", e);
-                    std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e))
-                })?,
-            None => {
-                // Fallback to current directory if global handle not available
-                std::env::current_dir()
-                    .map_err(|e| {
-                        eprintln!("Failed to get current directory: {}", e);
-                        e
-                    })?
-                    .join("data")
-                    .join("icons")
-            }
-        };
+        let app_handle = APP_HANDLE.get().ok_or("App handle not initialized")?;
+        let icons_dir = icons_dir(app_handle)
+            .map_err(|e| {
+                eprintln!("Failed to get icons directory: {}", e);
+                std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e))
+            })?;
         
         // Try to find the icon file with common image extensions
         let extensions = ["png", "jpg", "jpeg", "gif", "webp", "svg"];

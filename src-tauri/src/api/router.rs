@@ -6,6 +6,8 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::sync::OnceLock;
 use serde_json;
+use crate::config::config_path;
+use crate::api::controllers::icon::get_app_handle;
 
 /// HTTP request information
 #[derive(Debug, Clone)]
@@ -177,7 +179,12 @@ async fn check_server_initialized() -> Result<bool, Box<dyn std::error::Error + 
     }
     
     // Check file system
-    let config_path = std::env::current_dir()?.join("data").join("config.json");
+    let app_handle = get_app_handle().ok_or("App handle not initialized")?;
+    let config_path = config_path(app_handle)
+        .map_err(|e| {
+            eprintln!("Failed to get config path: {}", e);
+            std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e))
+        })?;
     let exists = config_path.exists();
     
     // Only cache if the server is initialized (true), never cache false

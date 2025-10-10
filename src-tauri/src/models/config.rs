@@ -12,10 +12,16 @@ pub struct Profile {
 pub struct MediaIndex {
     pub id: String,
     pub name: String,
+    #[serde(default = "default_index_type")]
+    pub r#type: String,
     #[serde(rename = "mediaType")]
     pub media_type: String,
     pub icon: String,
     pub folders: Vec<String>,
+}
+
+fn default_index_type() -> String {
+    "local".to_string()
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -59,6 +65,8 @@ pub struct IncomingProfile {
 pub struct IncomingMediaIndex {
     pub id: Option<String>,
     pub name: String,
+    #[serde(default = "default_index_type")]
+    pub r#type: String,
     #[serde(rename = "mediaType")]
     pub media_type: String,
     pub icon: String,
@@ -90,6 +98,8 @@ pub struct ServerNameUpdate {
 #[derive(Debug, Deserialize)]
 pub struct IndexUpdateRequest {
     pub name: String,
+    #[serde(default = "default_index_type")]
+    pub r#type: String,
     pub icon: String,
     #[serde(rename = "customIconFile")]
     pub custom_icon_file: Option<String>, // Base64 encoded image data

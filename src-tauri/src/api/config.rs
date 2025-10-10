@@ -3,7 +3,6 @@ use crate::utils::image::detect_image_extension;
 use crate::api::state::AppState;
 use crate::config::{config_path, icons_dir};
 use base64::{Engine as _, engine::general_purpose};
-use std::env;
 use tokio::fs;
 use uuid::Uuid;
 use argon2::{Argon2, PasswordHasher};
@@ -119,6 +118,7 @@ pub async fn handle_save_configuration(
             media_type: incoming_index.media_type,
             icon: incoming_index.icon,
             folders: incoming_index.folders,
+            r#type: incoming_index.r#type,
         };
         
         // Handle custom icon files if present
@@ -595,7 +595,7 @@ pub async fn handle_delete_profile(
 
 // Handler for creating a new local index
 pub async fn handle_create_local_index(
-    _app_state: AppState,
+    app_state: AppState,
     index_request: IncomingMediaIndex,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     // Validate input
@@ -619,16 +619,22 @@ pub async fn handle_create_local_index(
         ));
     }
 
-    // Get the data directory path
-    let data_dir = env::current_dir()
-        .map_err(|e| {
-            eprintln!("Failed to get current directory: {}", e);
-            warp::reject::custom(ConfigSaveError)
-        })?
-        .join("data");
+    // Get the app handle from app state
+    let app_handle_guard = app_state.app_handle.lock().await;
+    let app_handle = app_handle_guard.as_ref().ok_or_else(|| warp::reject::custom(ConfigSaveError))?.clone();
+    drop(app_handle_guard); // Release the lock
     
-    let icons_dir = data_dir.join("icons");
-    let config_path = data_dir.join("config.json");
+    let icons_dir = crate::config::icons_dir(&app_handle)
+        .map_err(|e| {
+            eprintln!("Failed to get icons directory: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    let config_path = crate::config::config_path(&app_handle)
+        .map_err(|e| {
+            eprintln!("Failed to get config path: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
     
     // Create directories if they don't exist
     fs::create_dir_all(&icons_dir).await
@@ -692,6 +698,7 @@ pub async fn handle_create_local_index(
         media_type: index_request.media_type.trim().to_string(),
         icon: final_icon,
         folders: index_request.folders,
+        r#type: index_request.r#type,
     };
     
     // Add index to configuration
@@ -724,7 +731,7 @@ pub async fn handle_create_local_index(
 
 // Handler for updating an existing index
 pub async fn handle_update_index(
-    _app_state: AppState,
+    app_state: AppState,
     index_id: String,
     index_request: IndexUpdateRequest,
 ) -> Result<impl warp::Reply, warp::Rejection> {
@@ -739,16 +746,22 @@ pub async fn handle_update_index(
         ));
     }
 
-    // Get the data directory path
-    let data_dir = env::current_dir()
-        .map_err(|e| {
-            eprintln!("Failed to get current directory: {}", e);
-            warp::reject::custom(ConfigSaveError)
-        })?
-        .join("data");
+    // Get the app handle from app state
+    let app_handle_guard = app_state.app_handle.lock().await;
+    let app_handle = app_handle_guard.as_ref().ok_or_else(|| warp::reject::custom(ConfigSaveError))?.clone();
+    drop(app_handle_guard); // Release the lock
     
-    let icons_dir = data_dir.join("icons");
-    let config_path = data_dir.join("config.json");
+    let icons_dir = crate::config::icons_dir(&app_handle)
+        .map_err(|e| {
+            eprintln!("Failed to get icons directory: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
+    
+    let config_path = crate::config::config_path(&app_handle)
+        .map_err(|e| {
+            eprintln!("Failed to get config path: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
     
     // Read existing configuration
     let config_json = fs::read_to_string(&config_path).await
@@ -842,18 +855,19 @@ pub async fn handle_update_index(
 
 // Handler for deleting an index
 pub async fn handle_delete_index(
-    _app_state: AppState,
+    app_state: AppState,
     index_id: String,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    // Get the data directory path
-    let data_dir = env::current_dir()
-        .map_err(|e| {
-            eprintln!("Failed to get current directory: {}", e);
-            warp::reject::custom(ConfigSaveError)
-        })?
-        .join("data");
+    // Get the app handle from app state
+    let app_handle_guard = app_state.app_handle.lock().await;
+    let app_handle = app_handle_guard.as_ref().ok_or_else(|| warp::reject::custom(ConfigSaveError))?.clone();
+    drop(app_handle_guard); // Release the lock
     
-    let config_path = data_dir.join("config.json");
+    let config_path = crate::config::config_path(&app_handle)
+        .map_err(|e| {
+            eprintln!("Failed to get config path: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
     
     // Read existing configuration
     let config_json = fs::read_to_string(&config_path).await
@@ -873,7 +887,11 @@ pub async fn handle_delete_index(
         let removed_index = config.indexes.remove(index_pos);
         
         // Try to remove associated icon file if it exists
-        let icons_dir = data_dir.join("icons");
+        let icons_dir = crate::config::icons_dir(&app_handle)
+            .map_err(|e| {
+                eprintln!("Failed to get icons directory: {}", e);
+                warp::reject::custom(ConfigSaveError)
+            })?;
         let icon_extensions = ["png", "jpg", "jpeg", "gif", "bmp", "webp"];
         for ext in &icon_extensions {
             let icon_path = icons_dir.join(format!("{}.{}", index_id, ext));
@@ -932,15 +950,14 @@ pub async fn handle_get_index_icon(index_id: String) -> Result<Box<dyn warp::Rep
         )));
     }
 
-    // For now, we'll use a fallback approach since this function doesn't have access to AppState
-    // In a future refactor, this should be updated to use the OS app data directory
-    let data_dir = env::current_dir()
+    // Use the global app handle to get the icons directory
+    let app_handle = crate::api::controllers::icon::get_app_handle()
+        .ok_or_else(|| warp::reject::custom(ConfigGetError))?;
+    let icons_dir = crate::config::icons_dir(app_handle)
         .map_err(|e| {
-            eprintln!("Failed to get current directory: {}", e);
+            eprintln!("Failed to get icons directory: {}", e);
             warp::reject::custom(ConfigGetError)
-        })?
-        .join("data")
-        .join("icons");
+        })?;
 
     // Try to find the icon file with common image extensions
     let extensions = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico"];
@@ -948,7 +965,7 @@ pub async fn handle_get_index_icon(index_id: String) -> Result<Box<dyn warp::Rep
     let mut found_extension: Option<&str> = None;
 
     for ext in &extensions {
-        let test_path = data_dir.join(format!("{}.{}", index_id, ext));
+        let test_path = icons_dir.join(format!("{}.{}", index_id, ext));
         if test_path.exists() {
             icon_path = Some(test_path);
             found_extension = Some(ext);

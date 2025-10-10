@@ -1,15 +1,29 @@
 use crate::api::router::{HttpRequest, HttpResponse, extract_user_agent};
 use crate::models::config::{Configuration, MediaIndex};
 use crate::utils::token::{generate_secure_token, add_token_to_storage, token_exists};
+use crate::config::config_path;
 use argon2::{Argon2, PasswordVerifier};
 use argon2::password_hash::PasswordHashString;
 use serde_json;
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::OnceLock;
+
+/// Global app handle for auth controller
+static APP_HANDLE: OnceLock<tauri::AppHandle> = OnceLock::new();
+
+pub fn init_auth_app_handle(app_handle: tauri::AppHandle) {
+    APP_HANDLE.set(app_handle).expect("Failed to initialize auth app handle");
+}
 
 /// Load configuration from file
 async fn load_configuration() -> Result<Option<Configuration>, Box<dyn std::error::Error + Send + Sync>> {
-    let config_path = std::env::current_dir()?.join("data").join("config.json");
+    let app_handle = APP_HANDLE.get().ok_or("App handle not initialized")?;
+    let config_path = config_path(app_handle)
+        .map_err(|e| {
+            eprintln!("Failed to get config path: {}", e);
+            std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e))
+        })?;
     
     if !config_path.exists() {
         return Ok(None);
