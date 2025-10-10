@@ -1,6 +1,16 @@
 use crate::api::router::{HttpRequest, HttpResponse};
+use crate::config::icons_dir;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::OnceLock;
+
+/// Global app handle for icon operations (used by HTTPS server)
+static APP_HANDLE: OnceLock<tauri::AppHandle> = OnceLock::new();
+
+/// Initialize the global app handle for icon operations
+pub fn init_icon_app_handle(app_handle: tauri::AppHandle) {
+    APP_HANDLE.set(app_handle).expect("Failed to initialize icon app handle");
+}
 
 /// Handle icon endpoint for serving custom icons by index ID
 pub fn handle_index_icon(request: &HttpRequest) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<HttpResponse, Box<dyn std::error::Error + Send + Sync>>> + Send + 'static>> {
@@ -23,13 +33,22 @@ pub fn handle_index_icon(request: &HttpRequest) -> std::pin::Pin<Box<dyn std::fu
                 .with_body("Bad Request: Invalid index ID"));
         }
         
-        // Get the data directory path
-        let data_dir = match std::env::current_dir() {
-            Ok(dir) => dir.join("data").join("icons"),
-            Err(_) => {
-                return Ok(HttpResponse::new(500)
-                    .with_cors()
-                    .with_body("Internal Server Error"));
+        // Get the icons directory path using OS app data directory
+        let icons_dir = match APP_HANDLE.get() {
+            Some(app_handle) => icons_dir(app_handle)
+                .map_err(|e| {
+                    eprintln!("Failed to get icons directory: {}", e);
+                    std::io::Error::new(std::io::ErrorKind::Other, format!("{}", e))
+                })?,
+            None => {
+                // Fallback to current directory if global handle not available
+                std::env::current_dir()
+                    .map_err(|e| {
+                        eprintln!("Failed to get current directory: {}", e);
+                        e
+                    })?
+                    .join("data")
+                    .join("icons")
             }
         };
         
@@ -38,7 +57,7 @@ pub fn handle_index_icon(request: &HttpRequest) -> std::pin::Pin<Box<dyn std::fu
         let mut icon_path: Option<PathBuf> = None;
         
         for ext in &extensions {
-            let test_path = data_dir.join(format!("{}.{}", index_id, ext));
+            let test_path = icons_dir.join(format!("{}.{}", index_id, ext));
             if test_path.exists() {
                 icon_path = Some(test_path);
                 break;

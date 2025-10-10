@@ -317,7 +317,7 @@ fn compress_to_connect_code(ip: &str, port: u16) -> String {
 
 
 // Handler for connect code endpoint - returns compressed IP and port for HTTPS server
-pub async fn handle_connect_code(app_state: crate::api::state::ExtendedAppState) -> Result<impl warp::Reply, warp::Rejection> {
+pub async fn handle_connect_code(app_state: crate::api::state::AppState) -> Result<impl warp::Reply, warp::Rejection> {
     // Get the local IP address
     let ip = match get_local_ip_address() {
         Ok(ip) => ip,
@@ -326,8 +326,8 @@ pub async fn handle_connect_code(app_state: crate::api::state::ExtendedAppState)
     
     // Get the HTTPS server port from shared state
     let https_port = {
-        let state = app_state.lock().await;
-        state.https_port.unwrap_or(DEFAULT_HTTPS_PORT)
+        let https_port_guard = app_state.https_port.lock().await;
+        https_port_guard.unwrap_or(DEFAULT_HTTPS_PORT)
     };
     
     // Generate the connect code for the HTTPS server

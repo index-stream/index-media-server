@@ -1,5 +1,5 @@
 use warp::Filter;
-use crate::api::state::{AppState, ExtendedAppState};
+use crate::api::state::AppState;
 use crate::models::config::IncomingConfiguration;
 use crate::api::folders::handle_select_folders;
 use crate::api::config::{handle_get_configuration, handle_save_configuration, handle_update_server_password, handle_update_server_name, handle_create_profile, handle_update_profile, handle_delete_profile, handle_create_local_index, handle_update_index, handle_delete_index, handle_get_index_icon};
@@ -10,7 +10,6 @@ use crate::models::config::{ServerPasswordUpdate, ServerNameUpdate, IncomingProf
 pub async fn start_http_server(
     http_port: u16,
     app_state: AppState,
-    extended_state: ExtendedAppState,
     startup_token: String,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Clone states for each route
@@ -25,7 +24,6 @@ pub async fn start_http_server(
     let app_state_create_index = app_state.clone();
     let app_state_update_index = app_state.clone();
     let app_state_delete_index = app_state.clone();
-    let extended_state_connect = extended_state.clone();
 
     // Token validation filter for API endpoints
     let token_validation = warp::header::<String>("authorization")
@@ -78,8 +76,8 @@ pub async fn start_http_server(
         .and(warp::path("connect-code"))
         .and(warp::get())
         .and(token_validation.clone())
-        .and(warp::any().map(move || extended_state_connect.clone()))
-        .and_then(|_, extended_state: ExtendedAppState| handle_connect_code(extended_state));
+        .and(warp::any().map(move || app_state.clone()))
+        .and_then(|_, app_state: AppState| handle_connect_code(app_state));
 
     let update_password = warp::path("api")
         .and(warp::path("server"))

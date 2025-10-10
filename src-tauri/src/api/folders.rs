@@ -33,7 +33,7 @@ fn filter_child_folders(folders: Vec<String>) -> Vec<String> {
 
 // Handler for folder selection endpoint
 pub async fn handle_select_folders(app_state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
-    let state = app_state.lock().await;
+    let state = app_state.app_handle.lock().await;
     let app_handle = state.as_ref().ok_or_else(|| warp::reject::custom(FolderSelectionError))?;
     
     // Use Tauri's folder selection dialog

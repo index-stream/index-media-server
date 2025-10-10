@@ -1,24 +1,12 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tauri::AppHandle;
+use sqlx::SqlitePool;
 
-// Shared state for HTTP server
-pub type AppState = Arc<Mutex<Option<AppHandle>>>;
-
-// Extended state that includes HTTPS port information
+// Unified app state containing both database pool and HTTPS port information
 #[derive(Clone)]
-pub struct ServerState {
-    pub app_handle: Option<AppHandle>,
-    pub https_port: Option<u16>,
+pub struct AppState {
+    pub app_handle: Arc<Mutex<Option<AppHandle>>>,
+    pub db_pool: SqlitePool,
+    pub https_port: Arc<Mutex<Option<u16>>>,
 }
-
-impl ServerState {
-    pub fn new() -> Self {
-        Self {
-            app_handle: None,
-            https_port: None,
-        }
-    }
-}
-
-pub type ExtendedAppState = Arc<Mutex<ServerState>>;

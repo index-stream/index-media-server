@@ -1,3 +1,5 @@
+use crate::config::certs_dir;
+use crate::constants::DEFAULT_HTTPS_PORT;
 use rcgen::generate_simple_self_signed;
 use std::fs::{self, File};
 use std::io::BufReader;
@@ -9,8 +11,6 @@ use tokio::time::interval;
 use tokio_rustls::TlsAcceptor;
 use rustls::{pki_types::{CertificateDer, PrivateKeyDer}, ServerConfig};
 use chrono::{DateTime, Utc};
-
-use crate::constants::DEFAULT_HTTPS_PORT;
 use crate::utils::network::find_available_port;
 use super::router::{Router, handle_connection_with_router};
 use super::controllers::{handle_login, handle_token_check, handle_ping, handle_static_files, handle_index_icon};
@@ -61,22 +61,13 @@ fn get_network_interfaces() -> Vec<String> {
 }
 
 /// Get the data directory path for certificate storage
-fn get_cert_data_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
-    // Use the Tauri app data directory
-    // For Tauri apps, we can use the app's data directory
-    let mut data_dir = std::env::current_dir()?;
-    data_dir.push("data");
-    data_dir.push("certs");
-    
-    // Create the directory if it doesn't exist
-    fs::create_dir_all(&data_dir)?;
-    
-    Ok(data_dir)
+fn get_cert_data_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    Ok(certs_dir(app_handle)?)
 }
 
 /// Get the full path for a certificate file
-fn get_cert_file_path(filename: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let mut path = get_cert_data_dir()?;
+fn get_cert_file_path(app_handle: &tauri::AppHandle, filename: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let mut path = get_cert_data_dir(app_handle)?;
     path.push(filename);
     Ok(path)
 }
@@ -115,10 +106,10 @@ pub fn generate_self_signed_cert() -> Result<(Vec<u8>, Vec<u8>, DateTime<Utc>), 
 }
 
 /// Save certificate files and expiration date
-fn save_certificate_files(cert_pem: Vec<u8>, key_pem: Vec<u8>, expiry: DateTime<Utc>) -> Result<(), Box<dyn std::error::Error>> {
-    let cert_path = get_cert_file_path(CERT_FILE)?;
-    let key_path = get_cert_file_path(KEY_FILE)?;
-    let expiry_path = get_cert_file_path(CERT_EXPIRY_FILE)?;
+fn save_certificate_files(app_handle: &tauri::AppHandle, cert_pem: Vec<u8>, key_pem: Vec<u8>, expiry: DateTime<Utc>) -> Result<(), Box<dyn std::error::Error>> {
+    let cert_path = get_cert_file_path(app_handle, CERT_FILE)?;
+    let key_path = get_cert_file_path(app_handle, KEY_FILE)?;
+    let expiry_path = get_cert_file_path(app_handle, CERT_EXPIRY_FILE)?;
     
     fs::write(&cert_path, cert_pem)?;
     fs::write(&key_path, key_pem)?;
@@ -132,8 +123,8 @@ fn save_certificate_files(cert_pem: Vec<u8>, key_pem: Vec<u8>, expiry: DateTime<
 }
 
 /// Load certificate expiration date
-fn load_certificate_expiry() -> Result<Option<DateTime<Utc>>, Box<dyn std::error::Error>> {
-    let expiry_path = get_cert_file_path(CERT_EXPIRY_FILE)?;
+fn load_certificate_expiry(app_handle: &tauri::AppHandle) -> Result<Option<DateTime<Utc>>, Box<dyn std::error::Error>> {
+    let expiry_path = get_cert_file_path(app_handle, CERT_EXPIRY_FILE)?;
     
     if !expiry_path.exists() {
         return Ok(None);
@@ -145,15 +136,15 @@ fn load_certificate_expiry() -> Result<Option<DateTime<Utc>>, Box<dyn std::error
 }
 
 /// Check if certificate files exist
-fn certificate_files_exist() -> Result<bool, Box<dyn std::error::Error>> {
-    let cert_path = get_cert_file_path(CERT_FILE)?;
-    let key_path = get_cert_file_path(KEY_FILE)?;
+fn certificate_files_exist(app_handle: &tauri::AppHandle) -> Result<bool, Box<dyn std::error::Error>> {
+    let cert_path = get_cert_file_path(app_handle, CERT_FILE)?;
+    let key_path = get_cert_file_path(app_handle, KEY_FILE)?;
     Ok(cert_path.exists() && key_path.exists())
 }
 
 /// Check if certificate needs renewal (expires within 72 hours)
-fn certificate_needs_renewal() -> Result<bool, Box<dyn std::error::Error>> {
-    match load_certificate_expiry()? {
+fn certificate_needs_renewal(app_handle: &tauri::AppHandle) -> Result<bool, Box<dyn std::error::Error>> {
+    match load_certificate_expiry(app_handle)? {
         Some(expiry) => {
             let now = Utc::now();
             let time_until_expiry = expiry - now;
@@ -170,8 +161,8 @@ fn certificate_needs_renewal() -> Result<bool, Box<dyn std::error::Error>> {
 }
 
 /// Load certificates from PEM files
-fn load_certs(filename: &str) -> Result<Vec<CertificateDer<'static>>, Box<dyn std::error::Error>> {
-    let cert_path = get_cert_file_path(filename)?;
+fn load_certs(app_handle: &tauri::AppHandle, filename: &str) -> Result<Vec<CertificateDer<'static>>, Box<dyn std::error::Error>> {
+    let cert_path = get_cert_file_path(app_handle, filename)?;
     let certfile = File::open(cert_path)?;
     let mut reader = BufReader::new(certfile);
     let certs = rustls_pemfile::certs(&mut reader)?;
@@ -179,8 +170,8 @@ fn load_certs(filename: &str) -> Result<Vec<CertificateDer<'static>>, Box<dyn st
 }
 
 /// Load private key from PEM file
-fn load_private_key(filename: &str) -> Result<PrivateKeyDer<'static>, Box<dyn std::error::Error>> {
-    let key_path = get_cert_file_path(filename)?;
+fn load_private_key(app_handle: &tauri::AppHandle, filename: &str) -> Result<PrivateKeyDer<'static>, Box<dyn std::error::Error>> {
+    let key_path = get_cert_file_path(app_handle, filename)?;
     let keyfile = File::open(key_path)?;
     let mut reader = BufReader::new(keyfile);
     let mut keys = rustls_pemfile::pkcs8_private_keys(&mut reader)?;
@@ -188,20 +179,20 @@ fn load_private_key(filename: &str) -> Result<PrivateKeyDer<'static>, Box<dyn st
 }
 
 /// Ensure certificate exists and is valid
-async fn ensure_valid_certificate() -> Result<(), Box<dyn std::error::Error>> {
+async fn ensure_valid_certificate(app_handle: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     // Check if certificate files exist
-    if !certificate_files_exist()? {
+    if !certificate_files_exist(app_handle)? {
         println!("📜 No existing certificate found, generating new one...");
         let (cert_pem, key_pem, expiry) = generate_self_signed_cert()?;
-        save_certificate_files(cert_pem, key_pem, expiry)?;
+        save_certificate_files(app_handle, cert_pem, key_pem, expiry)?;
         return Ok(());
     }
     
     // Check if certificate needs renewal
-    if certificate_needs_renewal()? {
+    if certificate_needs_renewal(app_handle)? {
         println!("🔄 Certificate needs renewal, generating new one...");
         let (cert_pem, key_pem, expiry) = generate_self_signed_cert()?;
-        save_certificate_files(cert_pem, key_pem, expiry)?;
+        save_certificate_files(app_handle, cert_pem, key_pem, expiry)?;
     } else {
         println!("✅ Existing certificate is valid");
     }
@@ -210,7 +201,7 @@ async fn ensure_valid_certificate() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Periodic certificate renewal check
-async fn periodic_certificate_check() {
+async fn periodic_certificate_check(app_handle: tauri::AppHandle) {
     let mut interval = interval(Duration::from_secs(PERIODIC_CHECK_INTERVAL_HOURS * 3600));
     
     loop {
@@ -218,7 +209,7 @@ async fn periodic_certificate_check() {
         
         println!("🔍 Performing periodic certificate check...");
         
-        if let Err(e) = ensure_valid_certificate().await {
+        if let Err(e) = ensure_valid_certificate(&app_handle).await {
             eprintln!("❌ Error during periodic certificate check: {}", e);
         } else {
             println!("✅ Periodic certificate check completed successfully");
@@ -227,16 +218,21 @@ async fn periodic_certificate_check() {
 }
 
 /// Start the HTTPS server for network access
-pub async fn start_https_server(app_state: crate::api::state::ExtendedAppState) -> Result<u16, Box<dyn std::error::Error>> {
+pub async fn start_https_server(app_state: crate::api::state::AppState) -> Result<u16, Box<dyn std::error::Error>> {
+    // Get the app handle
+    let app_handle_guard = app_state.app_handle.lock().await;
+    let app_handle = app_handle_guard.as_ref().ok_or("App handle not available")?.clone();
+    drop(app_handle_guard); // Release the lock
+    
     // Ensure we have a valid certificate
-    ensure_valid_certificate().await?;
+    ensure_valid_certificate(&app_handle).await?;
     
     // Start periodic certificate check
-    tokio::spawn(periodic_certificate_check());
+    tokio::spawn(periodic_certificate_check(app_handle.clone()));
     
     // Load certificates and private key
-    let certs = load_certs(CERT_FILE)?;
-    let key = load_private_key(KEY_FILE)?;
+    let certs = load_certs(&app_handle, CERT_FILE)?;
+    let key = load_private_key(&app_handle, KEY_FILE)?;
     
     // Create TLS configuration
     let tls_config = ServerConfig::builder()
@@ -251,8 +247,8 @@ pub async fn start_https_server(app_state: crate::api::state::ExtendedAppState) 
     
     // Store the port in the shared state
     {
-        let mut state = app_state.lock().await;
-        state.https_port = Some(port);
+        let mut https_port = app_state.https_port.lock().await;
+        *https_port = Some(port);
     }
     
     // Bind to all interfaces on the determined port
@@ -271,7 +267,7 @@ pub async fn start_https_server(app_state: crate::api::state::ExtendedAppState) 
     for interface in &interfaces {
         println!("     https://{}:{}/", interface, port);
     }
-    println!("   Certificate stored in: {}", get_cert_data_dir()?.display());
+    println!("   Certificate stored in: {}", get_cert_data_dir(&app_handle)?.display());
     println!("   Periodic renewal check every {} hours", PERIODIC_CHECK_INTERVAL_HOURS);
     
     // Create router and add routes

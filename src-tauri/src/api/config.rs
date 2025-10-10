@@ -1,6 +1,7 @@
 use crate::models::config::{Configuration, IncomingConfiguration, MediaIndex, ServerPasswordUpdate, ServerNameUpdate, ConfigurationResponse, IncomingProfile, IncomingMediaIndex, IndexUpdateRequest};
 use crate::utils::image::detect_image_extension;
 use crate::api::state::AppState;
+use crate::config::{config_path, icons_dir};
 use base64::{Engine as _, engine::general_purpose};
 use std::env;
 use tokio::fs;
@@ -26,16 +27,17 @@ fn hash_password(password: &str) -> Result<String, String> {
 }
 
 // Handler for getting configuration
-pub async fn handle_get_configuration(_app_state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
-    // Get the data directory path
-    let data_dir = env::current_dir()
-        .map_err(|e| {
-            eprintln!("Failed to get current directory: {}", e);
-            warp::reject::custom(ConfigGetError)
-        })?
-        .join("data");
+pub async fn handle_get_configuration(app_state: AppState) -> Result<impl warp::Reply, warp::Rejection> {
+    // Get the app handle
+    let app_handle_guard = app_state.app_handle.lock().await;
+    let app_handle = app_handle_guard.as_ref().ok_or_else(|| warp::reject::custom(ConfigGetError))?;
     
-    let config_path = data_dir.join("config.json");
+    // Get the config file path using OS app data directory
+    let config_path = config_path(app_handle)
+        .map_err(|e| {
+            eprintln!("Failed to get config path: {}", e);
+            warp::reject::custom(ConfigGetError)
+        })?;
     
     // Try to read the configuration file
     match fs::read_to_string(&config_path).await {
@@ -85,29 +87,23 @@ pub async fn handle_get_configuration(_app_state: AppState) -> Result<impl warp:
 
 // Handler for saving configuration
 pub async fn handle_save_configuration(
-    _app_state: AppState,
+    app_state: AppState,
     incoming_config: IncomingConfiguration,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    // Create data directory structure
-    let data_dir = env::current_dir()
-        .map_err(|e| {
-            eprintln!("Failed to get current directory: {}", e);
-            warp::reject::custom(ConfigSaveError)
-        })?
-        .join("data");
+    // Get the app handle
+    let app_handle_guard = app_state.app_handle.lock().await;
+    let app_handle = app_handle_guard.as_ref().ok_or_else(|| warp::reject::custom(ConfigSaveError))?;
     
-    let icons_dir = data_dir.join("icons");
-    
-    // Create directories if they don't exist
-    fs::create_dir_all(&data_dir).await
+    // Get the config file path and icons directory using OS app data directory
+    let config_path = config_path(app_handle)
         .map_err(|e| {
-            eprintln!("Failed to create data directory: {}", e);
+            eprintln!("Failed to get config path: {}", e);
             warp::reject::custom(ConfigSaveError)
         })?;
     
-    fs::create_dir_all(&icons_dir).await
+    let icons_dir = icons_dir(app_handle)
         .map_err(|e| {
-            eprintln!("Failed to create icons directory: {}", e);
+            eprintln!("Failed to get icons directory: {}", e);
             warp::reject::custom(ConfigSaveError)
         })?;
     
@@ -174,7 +170,6 @@ pub async fn handle_save_configuration(
     };
     
     // Save the configuration as JSON
-    let config_path = data_dir.join("config.json");
     let config_json = serde_json::to_string_pretty(&final_config)
         .map_err(|e| {
             eprintln!("Failed to serialize configuration: {}", e);
@@ -204,7 +199,7 @@ pub async fn handle_save_configuration(
 
 // Handler for updating server password
 pub async fn handle_update_server_password(
-    _app_state: AppState,
+    app_state: AppState,
     password_update: ServerPasswordUpdate,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     // Validate password is not empty
@@ -218,15 +213,16 @@ pub async fn handle_update_server_password(
         ));
     }
 
-    // Get the data directory path
-    let data_dir = env::current_dir()
-        .map_err(|e| {
-            eprintln!("Failed to get current directory: {}", e);
-            warp::reject::custom(ConfigSaveError)
-        })?
-        .join("data");
+    // Get the app handle
+    let app_handle_guard = app_state.app_handle.lock().await;
+    let app_handle = app_handle_guard.as_ref().ok_or_else(|| warp::reject::custom(ConfigSaveError))?;
     
-    let config_path = data_dir.join("config.json");
+    // Get the config file path using OS app data directory
+    let config_path = config_path(app_handle)
+        .map_err(|e| {
+            eprintln!("Failed to get config path: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
     
     // Read existing configuration
     let config_json = fs::read_to_string(&config_path).await
@@ -274,7 +270,7 @@ pub async fn handle_update_server_password(
 
 // Handler for updating server name
 pub async fn handle_update_server_name(
-    _app_state: AppState,
+    app_state: AppState,
     name_update: ServerNameUpdate,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     // Validate name is not empty
@@ -288,15 +284,16 @@ pub async fn handle_update_server_name(
         ));
     }
 
-    // Get the data directory path
-    let data_dir = env::current_dir()
-        .map_err(|e| {
-            eprintln!("Failed to get current directory: {}", e);
-            warp::reject::custom(ConfigSaveError)
-        })?
-        .join("data");
+    // Get the app handle
+    let app_handle_guard = app_state.app_handle.lock().await;
+    let app_handle = app_handle_guard.as_ref().ok_or_else(|| warp::reject::custom(ConfigSaveError))?;
     
-    let config_path = data_dir.join("config.json");
+    // Get the config file path using OS app data directory
+    let config_path = config_path(app_handle)
+        .map_err(|e| {
+            eprintln!("Failed to get config path: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
     
     // Read existing configuration
     let config_json = fs::read_to_string(&config_path).await
@@ -350,7 +347,7 @@ pub struct ConfigSaveError;
 
 // Handler for creating a new profile
 pub async fn handle_create_profile(
-    _app_state: AppState,
+    app_state: AppState,
     profile_request: IncomingProfile,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     // Validate input
@@ -374,15 +371,16 @@ pub async fn handle_create_profile(
         ));
     }
 
-    // Get the data directory path
-    let data_dir = env::current_dir()
-        .map_err(|e| {
-            eprintln!("Failed to get current directory: {}", e);
-            warp::reject::custom(ConfigSaveError)
-        })?
-        .join("data");
+    // Get the app handle
+    let app_handle_guard = app_state.app_handle.lock().await;
+    let app_handle = app_handle_guard.as_ref().ok_or_else(|| warp::reject::custom(ConfigSaveError))?;
     
-    let config_path = data_dir.join("config.json");
+    // Get the config file path using OS app data directory
+    let config_path = config_path(app_handle)
+        .map_err(|e| {
+            eprintln!("Failed to get config path: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
     
     // Read existing configuration
     let config_json = fs::read_to_string(&config_path).await
@@ -434,7 +432,7 @@ pub async fn handle_create_profile(
 
 // Handler for updating an existing profile
 pub async fn handle_update_profile(
-    _app_state: AppState,
+    app_state: AppState,
     profile_id: String,
     profile_request: IncomingProfile,
 ) -> Result<impl warp::Reply, warp::Rejection> {
@@ -459,15 +457,16 @@ pub async fn handle_update_profile(
         ));
     }
 
-    // Get the data directory path
-    let data_dir = env::current_dir()
-        .map_err(|e| {
-            eprintln!("Failed to get current directory: {}", e);
-            warp::reject::custom(ConfigSaveError)
-        })?
-        .join("data");
+    // Get the app handle
+    let app_handle_guard = app_state.app_handle.lock().await;
+    let app_handle = app_handle_guard.as_ref().ok_or_else(|| warp::reject::custom(ConfigSaveError))?;
     
-    let config_path = data_dir.join("config.json");
+    // Get the config file path using OS app data directory
+    let config_path = config_path(app_handle)
+        .map_err(|e| {
+            eprintln!("Failed to get config path: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
     
     // Read existing configuration
     let config_json = fs::read_to_string(&config_path).await
@@ -530,18 +529,19 @@ pub async fn handle_update_profile(
 
 // Handler for deleting a profile
 pub async fn handle_delete_profile(
-    _app_state: AppState,
+    app_state: AppState,
     profile_id: String,
 ) -> Result<impl warp::Reply, warp::Rejection> {
-    // Get the data directory path
-    let data_dir = env::current_dir()
-        .map_err(|e| {
-            eprintln!("Failed to get current directory: {}", e);
-            warp::reject::custom(ConfigSaveError)
-        })?
-        .join("data");
+    // Get the app handle
+    let app_handle_guard = app_state.app_handle.lock().await;
+    let app_handle = app_handle_guard.as_ref().ok_or_else(|| warp::reject::custom(ConfigSaveError))?;
     
-    let config_path = data_dir.join("config.json");
+    // Get the config file path using OS app data directory
+    let config_path = config_path(app_handle)
+        .map_err(|e| {
+            eprintln!("Failed to get config path: {}", e);
+            warp::reject::custom(ConfigSaveError)
+        })?;
     
     // Read existing configuration
     let config_json = fs::read_to_string(&config_path).await
@@ -932,7 +932,8 @@ pub async fn handle_get_index_icon(index_id: String) -> Result<Box<dyn warp::Rep
         )));
     }
 
-    // Get the data directory path
+    // For now, we'll use a fallback approach since this function doesn't have access to AppState
+    // In a future refactor, this should be updated to use the OS app data directory
     let data_dir = env::current_dir()
         .map_err(|e| {
             eprintln!("Failed to get current directory: {}", e);

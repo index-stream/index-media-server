@@ -101,7 +101,7 @@ pub fn handle_login(request: &HttpRequest) -> Pin<Box<dyn Future<Output = Result
             let auth_token = generate_secure_token();
             
             // Store token with user agent
-            if let Err(e) = add_token_to_storage(&auth_token, &user_agent) {
+            if let Err(e) = add_token_to_storage(&auth_token, &user_agent).await {
                 eprintln!("Warning: Failed to store token: {}", e);
             }
             
@@ -168,7 +168,7 @@ pub fn handle_token_check(request: &HttpRequest) -> Pin<Box<dyn Future<Output = 
         let config = load_configuration().await?.ok_or("Configuration not found")?;
         
         // Check token validity
-        match token_exists(token) {
+        match token_exists(token).await {
             Ok(exists) => {
                 if exists {
                     let response_body = serde_json::json!({
