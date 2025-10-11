@@ -1,5 +1,7 @@
 use crate::api::router::{HttpRequest, HttpResponse, extract_user_agent};
-use crate::models::config::{Configuration, MediaIndex};
+use crate::models::config::Configuration;
+use crate::api::responses::FilteredIndexResponse;
+use crate::db::repos::{ProfilesRepo, IndexesRepo};
 use crate::utils::token::{generate_secure_token, add_token_to_storage, token_exists};
 use crate::config::config_path;
 use argon2::{Argon2, PasswordVerifier};
@@ -8,12 +10,20 @@ use serde_json;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::OnceLock;
+use sqlx::SqlitePool;
 
 /// Global app handle for auth controller
 static APP_HANDLE: OnceLock<tauri::AppHandle> = OnceLock::new();
 
+/// Global database pool for auth controller
+static DB_POOL: OnceLock<SqlitePool> = OnceLock::new();
+
 pub fn init_auth_app_handle(app_handle: tauri::AppHandle) {
     APP_HANDLE.set(app_handle).expect("Failed to initialize auth app handle");
+}
+
+pub fn init_auth_db_pool(db_pool: SqlitePool) {
+    DB_POOL.set(db_pool).expect("Failed to initialize auth database pool");
 }
 
 /// Load configuration from file
@@ -35,15 +45,8 @@ async fn load_configuration() -> Result<Option<Configuration>, Box<dyn std::erro
 }
 
 /// Create filtered indexes with only id, name, mediaType, and icon
-fn create_filtered_indexes(indexes: &[MediaIndex]) -> Vec<serde_json::Value> {
-    indexes.iter().map(|index| {
-        serde_json::json!({
-            "id": index.id,
-            "name": index.name,
-            "mediaType": index.media_type,
-            "icon": index.icon
-        })
-    }).collect()
+fn create_filtered_indexes_from_db(indexes: Vec<crate::db::models::Index>) -> Vec<FilteredIndexResponse> {
+    indexes.into_iter().map(FilteredIndexResponse::from).collect()
 }
 
 /// Verify password against stored hash
@@ -119,14 +122,34 @@ pub fn handle_login(request: &HttpRequest) -> Pin<Box<dyn Future<Output = Result
                 eprintln!("Warning: Failed to store token: {}", e);
             }
             
+            // Fetch profiles and indexes from database
+            let profiles_repo = ProfilesRepo::new(DB_POOL.get().ok_or("Database pool not initialized")?.clone());
+            let indexes_repo = IndexesRepo::new(DB_POOL.get().ok_or("Database pool not initialized")?.clone());
+            
+            let profiles = profiles_repo.get_all_profiles().await
+                .map_err(|e| {
+                    eprintln!("Failed to fetch profiles: {}", e);
+                    "Database error"
+                })?;
+            
+            let indexes = indexes_repo.get_all_indexes().await
+                .map_err(|e| {
+                    eprintln!("Failed to fetch indexes: {}", e);
+                    "Database error"
+                })?;
+            
             let response_body = serde_json::json!({
                 "success": true,
                 "message": "Login successful",
                 "token": auth_token,
                 "serverId": config.id,
                 "serverName": config.name,
-                "profiles": config.profiles,
-                "indexes": create_filtered_indexes(&config.indexes)
+                "profiles": profiles.into_iter().map(|p| serde_json::json!({
+                    "id": p.id.to_string(),
+                    "name": p.name,
+                    "color": p.color
+                })).collect::<Vec<_>>(),
+                "indexes": create_filtered_indexes_from_db(indexes)
             });
             
             Ok(HttpResponse::new(200)
@@ -185,14 +208,34 @@ pub fn handle_token_check(request: &HttpRequest) -> Pin<Box<dyn Future<Output = 
         match token_exists(token).await {
             Ok(exists) => {
                 if exists {
+                    // Fetch profiles and indexes from database
+                    let profiles_repo = ProfilesRepo::new(DB_POOL.get().ok_or("Database pool not initialized")?.clone());
+                    let indexes_repo = IndexesRepo::new(DB_POOL.get().ok_or("Database pool not initialized")?.clone());
+                    
+                    let profiles = profiles_repo.get_all_profiles().await
+                        .map_err(|e| {
+                            eprintln!("Failed to fetch profiles: {}", e);
+                            "Database error"
+                        })?;
+                    
+                    let indexes = indexes_repo.get_all_indexes().await
+                        .map_err(|e| {
+                            eprintln!("Failed to fetch indexes: {}", e);
+                            "Database error"
+                        })?;
+                    
                     let response_body = serde_json::json!({
                         "success": true,
                         "token": token,
                         "valid": true,
                         "serverId": config.id,
                         "serverName": config.name,
-                        "profiles": config.profiles,
-                        "indexes": create_filtered_indexes(&config.indexes)
+                        "profiles": profiles.into_iter().map(|p| serde_json::json!({
+                            "id": p.id.to_string(),
+                            "name": p.name,
+                            "color": p.color
+                        })).collect::<Vec<_>>(),
+                        "indexes": create_filtered_indexes_from_db(indexes)
                     });
                     
                     Ok(HttpResponse::new(200)

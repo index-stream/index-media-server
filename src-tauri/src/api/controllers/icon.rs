@@ -51,7 +51,7 @@ pub fn handle_index_icon(request: &HttpRequest) -> std::pin::Pin<Box<dyn std::fu
         let mut icon_path: Option<PathBuf> = None;
         
         for ext in &extensions {
-            let test_path = icons_dir.join(format!("{}.{}", index_id, ext));
+            let test_path = icons_dir.join(format!("index_{}.{}", index_id, ext));
             if test_path.exists() {
                 icon_path = Some(test_path);
                 break;

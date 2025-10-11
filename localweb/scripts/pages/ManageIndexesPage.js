@@ -1,7 +1,7 @@
 import Page from './Page.js';
 import { PAGES, API_URL } from '../constants.js';
 import Backend from '../clients/Backend.js';
-import Config from '../models/Config.js';
+import Indexes from '../models/Indexes.js';
 import AddLocalIndexComponent from '../components/AddLocalIndexComponent.js';
 import UpdateLocalIndexComponent from '../components/UpdateLocalIndexComponent.js';
 
@@ -49,7 +49,7 @@ export default class ManageIndexesPage extends Page {
 
     onIndexCreated(index) {
         // Refresh the indexes list
-        this.renderIndexes(Config.getIndexes());
+        this.renderIndexes(Indexes.getIndexes());
         
         // Show success message
         const successDiv = document.getElementById('manage-indexes-success');
@@ -64,7 +64,7 @@ export default class ManageIndexesPage extends Page {
 
     onIndexUpdated(index) {
         // Refresh the indexes list
-        this.renderIndexes(Config.getIndexes());
+        this.renderIndexes(Indexes.getIndexes());
         
         // Show success message
         const successDiv = document.getElementById('manage-indexes-success');
@@ -110,7 +110,7 @@ export default class ManageIndexesPage extends Page {
             await Backend.deleteIndex(indexId);
 
             // Update local config immediately
-            Config.removeIndex(indexId);
+            Indexes.removeIndex(indexId);
 
             // Refresh indexes list
             await this.loadIndexes();
@@ -144,7 +144,7 @@ export default class ManageIndexesPage extends Page {
     getMediaTypeIcon(mediaType) {
         const icons = {
             videos: './images/icon_movie.svg',
-            music: './images/icon_music.svg',
+            audio: './images/icon_music.svg',
             photos: './images/icon_image.svg'
         };
         return icons[mediaType] || './images/icon_home.svg';
@@ -205,8 +205,8 @@ export default class ManageIndexesPage extends Page {
                 </div>
                 <div class="flex items-center justify-between text-sm text-gray-400">
                     <div class="flex items-center space-x-2">
-                        <img src="${this.getMediaTypeIcon(index.mediaType)}" alt="${index.mediaType}" class="w-4 h-4">
-                        <span>${index.mediaType || 'Unknown'}</span>
+                        <img src="${this.getMediaTypeIcon(index.type)}" alt="${index.type}" class="w-4 h-4">
+                        <span>${index.type || 'Unknown'}</span>
                     </div>
                     <span class="text-xs">Local Index</span>
                 </div>
@@ -235,11 +235,11 @@ export default class ManageIndexesPage extends Page {
     async loadIndexes() {
         try {
             // Use config from model instead of API call
-            if (!Config.isLoaded()) {
-                throw new Error('Configuration not loaded');
+            if (!Indexes.isLoaded()) {
+                throw new Error('Indexes not loaded');
             }
             
-            const indexes = Config.getIndexes();
+            const indexes = Indexes.getIndexes();
             this.renderIndexes(indexes);
             
         } catch (error) {

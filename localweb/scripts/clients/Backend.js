@@ -29,6 +29,10 @@ class Backend {
         return this._putAuthenticated('/server/password', { password });
     }
 
+    async getIndexes() {
+        return this._getAuthenticated('/indexes');
+    }
+
     async createLocalIndex(index) {
         return this._postAuthenticated('/index/local', index);
     }
@@ -39,6 +43,10 @@ class Backend {
 
     async deleteIndex(indexId) {
         return this._deleteAuthenticated('/index/' + indexId);
+    }
+
+    async getProfiles() {
+        return this._getAuthenticated('/profiles');
     }
 
     async createProfile(profile) {

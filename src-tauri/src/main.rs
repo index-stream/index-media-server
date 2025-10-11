@@ -27,6 +27,7 @@ fn main() {
         let db_pool = db::pool::connect_pool(&db_path).await?;
         db::pool::init_schema(&db_pool).await?;
         
+        
         // Initialize token repository
         utils::token::init_token_repo(db_pool.clone());
         
@@ -35,6 +36,9 @@ fn main() {
         
         // Initialize auth app handle for HTTPS server
         index_media_server_lib::api::controllers::auth::init_auth_app_handle(app.handle().clone());
+        
+        // Initialize auth database pool for HTTPS server
+        index_media_server_lib::api::controllers::auth::init_auth_db_pool(db_pool.clone());
         
         let app_handle = Arc::new(Mutex::new(Some(app.handle().clone())));
         let https_port = Arc::new(Mutex::new(None));

@@ -6,6 +6,9 @@ pub mod https;
 pub mod state;
 pub mod router;
 pub mod controllers;
+pub mod responses;
+pub mod profiles;
+pub mod indexes;
 
 pub use config::*;
 pub use folders::*;
@@ -14,4 +17,7 @@ pub use http::*;
 pub use https::*;
 pub use state::*;
 pub use router::*;
+pub use responses::*;
+pub use profiles::*;
+pub use indexes::*;
 pub use controllers::{handle_login, handle_token_check, handle_ping, handle_static_files};

@@ -23,17 +23,13 @@ pub async fn connect_pool(db_path: &std::path::Path) -> Result<SqlitePool> {
 
 /// Initialize the database schema
 pub async fn init_schema(pool: &SqlitePool) -> Result<()> {
-    sqlx::query(
-        r#"
-        CREATE TABLE IF NOT EXISTS tokens (
-            token TEXT PRIMARY KEY,
-            user_agent TEXT,
-            created_at INTEGER NOT NULL
-        )
-        "#
-    )
-    .execute(pool)
-    .await?;
+    // Read the schema.sql file
+    let schema_sql = include_str!("../../../schema.sql");
+    
+    // Execute the schema
+    sqlx::query(schema_sql)
+        .execute(pool)
+        .await?;
     
     Ok(())
 }

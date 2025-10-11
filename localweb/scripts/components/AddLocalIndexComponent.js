@@ -1,6 +1,6 @@
 import { API_URL } from '../constants.js';
 import Backend from '../clients/Backend.js';
-import Config from '../models/Config.js';
+import Indexes from '../models/Indexes.js';
 import { escapeHtml } from '../utils/text.js';
 
 export default class AddLocalIndexComponent {
@@ -321,7 +321,7 @@ export default class AddLocalIndexComponent {
             // Create new index
             const newIndex = {
                 name: name,
-                mediaType: this.selectedMediaType,
+                type: this.selectedMediaType,
                 icon: this.selectedIcon,
                 folders: this.selectedFolders
             };
@@ -336,7 +336,7 @@ export default class AddLocalIndexComponent {
             const result = await Backend.createLocalIndex(newIndex);
             
             // Update local config immediately with the returned index (includes ID)
-            Config.addIndex(result.index);
+            Indexes.addIndex(result.index);
             
             // Hide modal and show success
             this.hideModal();

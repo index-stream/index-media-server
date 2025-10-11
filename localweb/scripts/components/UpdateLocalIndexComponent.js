@@ -1,6 +1,6 @@
 import { API_URL } from '../constants.js';
 import Backend from '../clients/Backend.js';
-import Config from '../models/Config.js';
+import Indexes from '../models/Indexes.js';
 import { escapeHtml } from '../utils/text.js';
 
 export default class UpdateLocalIndexComponent {
@@ -161,7 +161,7 @@ export default class UpdateLocalIndexComponent {
         
         // Update index info display
         document.getElementById('update-index-name-display').textContent = this.editingIndex.name;
-        document.getElementById('update-index-media-type-display').textContent = this.editingIndex.mediaType || 'Unknown';
+        document.getElementById('update-index-media-type-display').textContent = this.editingIndex.type || 'Unknown';
         
         // Update icon display
         const iconDisplay = document.getElementById('update-index-icon-display');
@@ -383,7 +383,7 @@ export default class UpdateLocalIndexComponent {
             const updatedIndex = {
                 id: this.editingIndex.id,
                 name: this.editingIndex.name,
-                mediaType: this.editingIndex.mediaType, // Don't allow changing media type
+                type: this.editingIndex.type, // Don't allow changing media type
                 icon: this.editingIndex.icon,
                 folders: this.editingIndex.folders || []
             };
@@ -398,7 +398,7 @@ export default class UpdateLocalIndexComponent {
             const result = await Backend.updateIndex(updatedIndex);
             
             // Update local config immediately with the result from server
-            Config.updateIndex(result.index);
+            Indexes.updateIndex(result.index);
             
             // Hide modal and show success
             this.hideModal();

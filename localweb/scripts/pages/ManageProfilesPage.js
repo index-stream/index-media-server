@@ -1,7 +1,7 @@
 import Page from './Page.js';
 import { PAGES } from '../constants.js';
 import Backend from '../clients/Backend.js';
-import Config from '../models/Config.js';
+import Profiles from '../models/Profiles.js';
 import { escapeHtml, getInitials } from '../utils/text.js';
 
 export default class ManageProfilesPage extends Page {
@@ -141,7 +141,7 @@ export default class ManageProfilesPage extends Page {
                 result = await Backend.updateProfile(updatedProfile);
                 
                 // Update local config immediately with the result from server
-                Config.updateProfile(result.profile);
+                Profiles.updateProfile(result.profile);
             } else {
                 // Create new profile
                 const newProfile = {
@@ -151,7 +151,7 @@ export default class ManageProfilesPage extends Page {
                 result = await Backend.createProfile(newProfile);
                 
                 // Update local config immediately with the returned profile (includes ID)
-                Config.addProfile(result.profile);
+                Profiles.addProfile(result.profile);
             }
 
             // Refresh profiles list
@@ -188,7 +188,7 @@ export default class ManageProfilesPage extends Page {
             successDiv.classList.add('hidden');
 
             // Check if this is the last profile
-            const profiles = Config.getProfiles();
+            const profiles = Profiles.getProfiles();
             if (profiles.length <= 1) {
                 errorDiv.textContent = 'Cannot delete the last remaining profile. You must have at least one profile.';
                 errorDiv.classList.remove('hidden');
@@ -203,7 +203,7 @@ export default class ManageProfilesPage extends Page {
             await Backend.deleteProfile(profileId);
 
             // Update local config immediately
-            Config.removeProfile(profileId);
+            Profiles.removeProfile(profileId);
 
             // Refresh profiles list
             await this.loadProfiles();
@@ -291,11 +291,11 @@ export default class ManageProfilesPage extends Page {
     async loadProfiles() {
         try {
             // Use config from model instead of API call
-            if (!Config.isLoaded()) {
-                throw new Error('Configuration not loaded');
+            if (!Profiles.isLoaded()) {
+                throw new Error('Profiles not loaded');
             }
             
-            const profiles = Config.getProfiles();
+            const profiles = Profiles.getProfiles();
             this.renderProfiles(profiles);
             
         } catch (error) {

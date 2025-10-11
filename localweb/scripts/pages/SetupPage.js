@@ -855,7 +855,7 @@ export default class SetupPage extends Page {
                 password: this.serverPassword,
                 indexes: [{
                     name: this.indexName,
-                    mediaType: this.mediaType,
+                    type: this.mediaType,
                     icon: this.selectedIcon,
                     folders: this.selectedFolders,
                     ...(customIconFile ? { customIconFile } : {})

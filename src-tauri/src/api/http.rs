@@ -2,7 +2,9 @@ use warp::Filter;
 use crate::api::state::AppState;
 use crate::models::config::IncomingConfiguration;
 use crate::api::folders::handle_select_folders;
-use crate::api::config::{handle_get_configuration, handle_save_configuration, handle_update_server_password, handle_update_server_name, handle_create_profile, handle_update_profile, handle_delete_profile, handle_create_local_index, handle_update_index, handle_delete_index, handle_get_index_icon};
+use crate::api::config::{handle_get_configuration, handle_save_configuration, handle_update_server_password, handle_update_server_name, handle_get_index_icon};
+use crate::api::profiles::{handle_get_profiles, handle_create_profile, handle_update_profile, handle_delete_profile};
+use crate::api::indexes::{handle_get_indexes, handle_create_local_index, handle_update_index, handle_delete_index};
 use crate::api::handlers::{handle_ping, handle_connect_code, handle_static_file};
 use crate::models::config::{ServerPasswordUpdate, ServerNameUpdate, IncomingProfile, IncomingMediaIndex, IndexUpdateRequest};
 
@@ -24,6 +26,10 @@ pub async fn start_http_server(
     let app_state_create_index = app_state.clone();
     let app_state_update_index = app_state.clone();
     let app_state_delete_index = app_state.clone();
+
+    let app_state_get_profiles = app_state.clone();
+    let app_state_get_indexes = app_state.clone();
+    let app_state_get_index_icon = app_state.clone();
 
     // Token validation filter for API endpoints
     let token_validation = warp::header::<String>("authorization")
@@ -148,13 +154,28 @@ pub async fn start_http_server(
         .and(warp::any().map(move || app_state_delete_index.clone()))
         .and_then(|index_id: String, _, app_state: AppState| handle_delete_index(app_state, index_id));
 
+    let get_profiles = warp::path("api")
+        .and(warp::path("profiles"))
+        .and(warp::get())
+        .and(token_validation.clone())
+        .and(warp::any().map(move || app_state_get_profiles.clone()))
+        .and_then(|_, app_state: AppState| handle_get_profiles(app_state));
+
+    let get_indexes = warp::path("api")
+        .and(warp::path("indexes"))
+        .and(warp::get())
+        .and(token_validation.clone())
+        .and(warp::any().map(move || app_state_get_indexes.clone()))
+        .and_then(|_, app_state: AppState| handle_get_indexes(app_state));
+
     // Icon serving route (no authorization required for img tags)
     let get_index_icon = warp::path("api")
         .and(warp::path("index"))
         .and(warp::path::param::<String>())
         .and(warp::path("icon"))
         .and(warp::get())
-        .and_then(|index_id: String| handle_get_index_icon(index_id));
+        .and(warp::any().map(move || app_state_get_index_icon.clone()))
+        .and_then(|index_id: String, app_state: AppState| handle_get_index_icon(app_state, index_id));
 
     // Static file serving with SPA fallback (only for non-API paths)
     let static_files = warp::path::full()
@@ -175,9 +196,11 @@ pub async fn start_http_server(
         .or(connect_code)
         .or(update_password)
         .or(update_name)
+        .or(get_profiles)
         .or(create_profile)
         .or(update_profile)
         .or(delete_profile)
+        .or(get_indexes)
         .or(create_local_index)
         .or(update_index)
         .or(delete_index)
