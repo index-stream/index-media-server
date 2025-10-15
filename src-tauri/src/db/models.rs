@@ -62,6 +62,8 @@ pub struct Index {
     pub icon: Option<String>,
     pub created_at: i64, // Unix timestamp
     pub metadata: String, // JSON string
+    pub scan_status: String, // 'queued', 'scanning', 'done', 'failed' (default 'queued')
+    pub last_scanned_at: i64, // Unix timestamp, default 0
 }
 
 impl Index {
@@ -75,6 +77,8 @@ impl Index {
             icon,
             created_at: Utc::now().timestamp(),
             metadata: serde_json::to_string(&metadata).unwrap_or_else(|_| "{}".to_string()),
+            scan_status: "queued".to_string(), // Default to queued for scanning
+            last_scanned_at: 0, // Default to 0
         }
     }
     
@@ -93,39 +97,14 @@ impl Index {
         self.metadata = serde_json::to_string(metadata)?;
         Ok(())
     }
-}
-
-/// Scan job model for database storage
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
-pub struct ScanJob {
-    pub id: i64,
-    pub index_id: i64,
-    pub status: String, // 'queued', 'scanning'
-    pub created_at: i64, // Unix timestamp
-    pub updated_at: i64, // Unix timestamp
-}
-
-impl ScanJob {
-    /// Create a new scan job instance
-    pub fn new(index_id: i64, status: String) -> Self {
-        let now = Utc::now().timestamp();
-        Self {
-            id: 0, // Will be set by database
-            index_id,
-            status,
-            created_at: now,
-            updated_at: now,
+    
+    /// Get the last scanned time as a DateTime
+    pub fn last_scanned_at_datetime(&self) -> Option<DateTime<Utc>> {
+        if self.last_scanned_at > 0 {
+            DateTime::from_timestamp(self.last_scanned_at, 0)
+        } else {
+            None
         }
-    }
-    
-    /// Get the creation time as a DateTime
-    pub fn created_at_datetime(&self) -> DateTime<Utc> {
-        DateTime::from_timestamp(self.created_at, 0).unwrap_or_else(|| Utc::now())
-    }
-    
-    /// Get the update time as a DateTime
-    pub fn updated_at_datetime(&self) -> DateTime<Utc> {
-        DateTime::from_timestamp(self.updated_at, 0).unwrap_or_else(|| Utc::now())
     }
 }
 

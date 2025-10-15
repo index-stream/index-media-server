@@ -4,7 +4,7 @@ use crate::models::config::IncomingConfiguration;
 use crate::api::folders::handle_select_folders;
 use crate::api::config::{handle_get_configuration, handle_save_configuration, handle_update_server_password, handle_update_server_name, handle_get_index_icon};
 use crate::api::profiles::{handle_get_profiles, handle_create_profile, handle_update_profile, handle_delete_profile};
-use crate::api::indexes::{handle_get_indexes, handle_create_local_index, handle_update_index, handle_delete_index};
+use crate::api::indexes::{handle_get_indexes, handle_create_local_index, handle_update_index, handle_delete_index, handle_queue_index_scan};
 use crate::api::handlers::{handle_ping, handle_connect_code, handle_static_file};
 use crate::models::config::{ServerPasswordUpdate, ServerNameUpdate, IncomingProfile, IncomingMediaIndex, IndexUpdateRequest};
 
@@ -30,6 +30,7 @@ pub async fn start_http_server(
     let app_state_get_profiles = app_state.clone();
     let app_state_get_indexes = app_state.clone();
     let app_state_get_index_icon = app_state.clone();
+    let app_state_queue_scan = app_state.clone();
 
     // Token validation filter for API endpoints
     let token_validation = warp::header::<String>("authorization")
@@ -177,6 +178,15 @@ pub async fn start_http_server(
         .and(warp::any().map(move || app_state_get_index_icon.clone()))
         .and_then(|index_id: String, app_state: AppState| handle_get_index_icon(app_state, index_id));
 
+    let queue_index_scan = warp::path("api")
+        .and(warp::path("index"))
+        .and(warp::path::param::<String>())
+        .and(warp::path("scan-job"))
+        .and(warp::post())
+        .and(token_validation.clone())
+        .and(warp::any().map(move || app_state_queue_scan.clone()))
+        .and_then(|index_id: String, _, app_state: AppState| handle_queue_index_scan(app_state, index_id));
+
     // Static file serving with SPA fallback (only for non-API paths)
     let static_files = warp::path::full()
         .and_then(|path: warp::path::FullPath| async move {
@@ -205,6 +215,7 @@ pub async fn start_http_server(
         .or(update_index)
         .or(delete_index)
         .or(get_index_icon)
+        .or(queue_index_scan)
         .or(static_files)
         .recover(move |rejection: warp::Rejection| async move {
             if rejection.find::<TokenValidationError>().is_some() {

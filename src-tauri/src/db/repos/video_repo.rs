@@ -1,6 +1,6 @@
 use sqlx::SqlitePool;
 use anyhow::Result;
-use crate::db::models::{ScanJob, VideoItem, VideoVersion, VideoPart};
+use crate::db::models::{VideoItem, VideoVersion, VideoPart};
 use serde_json::Value;
 
 /// Repository for video-related database operations
@@ -12,51 +12,6 @@ pub struct VideoRepo {
 impl VideoRepo {
     pub fn new(pool: SqlitePool) -> Self {
         Self { pool }
-    }
-    
-    // Scan Jobs
-    
-    /// Add a new scan job
-    pub async fn add_scan_job(&self, index_id: i64, status: String) -> Result<i64> {
-        let scan_job = ScanJob::new(index_id, status);
-        
-        let result = sqlx::query(
-            "INSERT INTO scan_jobs (index_id, status, created_at, updated_at) VALUES (?, ?, ?, ?)"
-        )
-        .bind(scan_job.index_id)
-        .bind(&scan_job.status)
-        .bind(scan_job.created_at)
-        .bind(scan_job.updated_at)
-        .execute(&self.pool)
-        .await?;
-        
-        Ok(result.last_insert_rowid())
-    }
-    
-    /// Get scan jobs for an index
-    pub async fn get_scan_jobs_by_index(&self, index_id: i64) -> Result<Vec<ScanJob>> {
-        let scan_jobs = sqlx::query_as::<_, ScanJob>(
-            "SELECT * FROM scan_jobs WHERE index_id = ? ORDER BY created_at DESC"
-        )
-        .bind(index_id)
-        .fetch_all(&self.pool)
-        .await?;
-        
-        Ok(scan_jobs)
-    }
-    
-    /// Update scan job status
-    pub async fn update_scan_job_status(&self, id: i64, status: String) -> Result<()> {
-        let now = chrono::Utc::now().timestamp();
-        
-        sqlx::query("UPDATE scan_jobs SET status = ?, updated_at = ? WHERE id = ?")
-            .bind(&status)
-            .bind(now)
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
-        
-        Ok(())
     }
     
     // Video Items

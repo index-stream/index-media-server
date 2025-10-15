@@ -402,3 +402,92 @@ pub async fn handle_delete_index(
         warp::http::StatusCode::OK,
     ))
 }
+
+// Handler for queuing an index scan job
+pub async fn handle_queue_index_scan(
+    app_state: AppState,
+    index_id: String,
+) -> Result<impl warp::reply::Reply, warp::Rejection> {
+    // Parse index_id as i64
+    let index_id = index_id.parse::<i64>()
+        .map_err(|_| {
+            eprintln!("Invalid index ID format");
+            custom(IndexError)
+        })?;
+    
+    // Get the index and check if it can be queued
+    let indexes_repo = IndexesRepo::new(app_state.db_pool.clone());
+    
+    let index = indexes_repo.get_index_by_id(index_id).await
+        .map_err(|e| {
+            eprintln!("Failed to fetch index: {}", e);
+            custom(IndexError)
+        })?;
+    
+    let index = match index {
+        Some(idx) => idx,
+        None => {
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&serde_json::json!({
+                    "success": false,
+                    "error": "Index not found",
+                    "message": "The specified index does not exist"
+                })),
+                warp::http::StatusCode::NOT_FOUND,
+            ));
+        }
+    };
+    
+    // Check the current scan status and determine if we can queue
+    match index.scan_status.as_str() {
+        "done" | "failed" => {
+            // Can be queued - update the status to 'queued'
+            indexes_repo.update_scan_status(index_id, "queued".to_string()).await
+                .map_err(|e| {
+                    eprintln!("Failed to update scan status: {}", e);
+                    custom(IndexError)
+                })?;
+            
+            println!("Index {} queued for scanning", index_id);
+            
+            Ok(warp::reply::with_status(
+                warp::reply::json(&serde_json::json!({
+                    "success": true,
+                    "message": "Index queued for scanning"
+                })),
+                warp::http::StatusCode::OK,
+            ))
+        }
+        "queued" => {
+            Ok(warp::reply::with_status(
+                warp::reply::json(&serde_json::json!({
+                    "success": false,
+                    "error": "Index already queued",
+                    "message": "This index is already queued for scanning"
+                })),
+                warp::http::StatusCode::CONFLICT,
+            ))
+        }
+        "scanning" => {
+            Ok(warp::reply::with_status(
+                warp::reply::json(&serde_json::json!({
+                    "success": false,
+                    "error": "Index currently scanning",
+                    "message": "This index is currently being scanned and cannot be queued"
+                })),
+                warp::http::StatusCode::CONFLICT,
+            ))
+        }
+        _ => {
+            // Fallback for any unexpected status
+            Ok(warp::reply::with_status(
+                warp::reply::json(&serde_json::json!({
+                    "success": false,
+                    "error": "Index currently scanning",
+                    "message": "This index is currently being scanned and cannot be queued"
+                })),
+                warp::http::StatusCode::CONFLICT,
+            ))
+        }
+    }
+}

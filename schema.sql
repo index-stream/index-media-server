@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS profiles (
 --   icon        : UI hint (e.g., "movie")
 --   created_at  : epoch seconds
 --   metadata    : JSON bag (e.g., {"folders":["/path/a","/path/b"], ...})
+--   scan_status : 'queued' | 'scanning' | 'done' | 'failed' (default 'queued')
+--   last_scanned_at : epoch seconds (default 0)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS indexes (
   id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,25 +57,9 @@ CREATE TABLE IF NOT EXISTS indexes (
   icon             TEXT,                                 -- e.g., "movie"
   created_at       INTEGER NOT NULL DEFAULT (strftime('%s','now')),
   metadata         TEXT NOT NULL DEFAULT '{}'            -- JSON (folders, extra settings)
-                     CHECK (json_valid(metadata))
-);
-
--- ----------------------------------------------------------------------------
--- SCAN JOBS — scan jobs
--- status: 'queued' | 'scanning'
--- Columns:
---   id              : autoincrement surrogate key
---   index_id        : FK to indexes.id (scoping all queries)
---   status          : status of the scan job
---   created_at      : when THIS item was added (epoch seconds)
---   updated_at      : when THIS item was updated (epoch seconds)
--- ----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS scan_jobs (
-  id               INTEGER PRIMARY KEY AUTOINCREMENT,
-  index_id         INTEGER NOT NULL REFERENCES indexes(id) ON DELETE CASCADE,
-  status           TEXT NOT NULL CHECK (status IN ('queued','scanning')),
-  created_at       INTEGER NOT NULL DEFAULT (strftime('%s','now')),
-  updated_at       INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+                     CHECK (json_valid(metadata)),
+  scan_status      TEXT NOT NULL DEFAULT 'queued' CHECK (scan_status IN ('queued','scanning','done','failed')),
+  last_scanned_at  INTEGER NOT NULL DEFAULT 0
 );
 
 -- ----------------------------------------------------------------------------

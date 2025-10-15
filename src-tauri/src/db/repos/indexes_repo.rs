@@ -19,7 +19,7 @@ impl IndexesRepo {
         let index = Index::new(name, r#type, icon, metadata);
         
         let result = sqlx::query(
-            "INSERT INTO indexes (name, type, is_plugin, icon, created_at, metadata) VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO indexes (name, type, is_plugin, icon, created_at, metadata, scan_status, last_scanned_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&index.name)
         .bind(&index.r#type)
@@ -27,6 +27,8 @@ impl IndexesRepo {
         .bind(&index.icon)
         .bind(index.created_at)
         .bind(&index.metadata)
+        .bind(&index.scan_status)
+        .bind(index.last_scanned_at)
         .execute(&self.pool)
         .await?;
         
@@ -109,5 +111,30 @@ impl IndexesRepo {
         };
         
         Ok(result > 0)
+    }
+    
+    /// Update scan status for an index (without updating last_scanned_at)
+    pub async fn update_scan_status(&self, id: i64, status: String) -> Result<()> {
+        sqlx::query("UPDATE indexes SET scan_status = ? WHERE id = ?")
+            .bind(&status)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        
+        Ok(())
+    }
+    
+    /// Update scan status for an index with optional last_scanned_at timestamp
+    pub async fn update_scan_status_with_timestamp(&self, id: i64, status: String, last_scanned_at: Option<i64>) -> Result<()> {
+        let timestamp = last_scanned_at.unwrap_or_else(|| chrono::Utc::now().timestamp());
+        
+        sqlx::query("UPDATE indexes SET scan_status = ?, last_scanned_at = ? WHERE id = ?")
+            .bind(&status)
+            .bind(timestamp)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        
+        Ok(())
     }
 }

@@ -36,6 +36,8 @@ pub struct IndexResponse {
     pub r#type: String,
     pub icon: String,
     pub folders: Vec<String>,
+    pub scan_status: String,
+    pub last_scanned_at: i64,
 }
 
 impl From<DbIndex> for IndexResponse {
@@ -61,6 +63,8 @@ impl From<DbIndex> for IndexResponse {
             r#type: index.r#type,
             icon: index.icon.unwrap_or_else(|| "custom".to_string()),
             folders,
+            scan_status: index.scan_status,
+            last_scanned_at: index.last_scanned_at,
         }
     }
 }
