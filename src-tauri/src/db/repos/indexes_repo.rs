@@ -113,6 +113,16 @@ impl IndexesRepo {
         Ok(result > 0)
     }
     
+    /// Get indexes by scan status
+    pub async fn get_indexes_by_scan_status(&self, scan_status: &str) -> Result<Vec<Index>> {
+        let indexes = sqlx::query_as::<_, Index>("SELECT * FROM indexes WHERE scan_status = ? ORDER BY last_scanned_at ASC")
+            .bind(scan_status)
+            .fetch_all(&self.pool)
+            .await?;
+        
+        Ok(indexes)
+    }
+    
     /// Update scan status for an index (without updating last_scanned_at)
     pub async fn update_scan_status(&self, id: i64, status: String) -> Result<()> {
         sqlx::query("UPDATE indexes SET scan_status = ? WHERE id = ?")

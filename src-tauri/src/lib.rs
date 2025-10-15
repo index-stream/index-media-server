@@ -6,6 +6,7 @@ pub mod utils;
 pub mod constants;
 pub mod db;
 pub mod config;
+pub mod scanning;
 
 // Re-export commonly used types and functions
 pub use api::folders::{handle_select_folders, select_folders};

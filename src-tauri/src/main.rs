@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use index_media_server_lib::{AppState, DEFAULT_HTTP_PORT, find_available_port, start_http_server, start_https_server, generate_secure_token, config, db, utils};
+use index_media_server_lib::{AppState, DEFAULT_HTTP_PORT, find_available_port, start_http_server, start_https_server, generate_secure_token, config, db, utils, scanning};
 
 use tauri::{
   menu::{Menu, MenuItem},
@@ -84,6 +84,13 @@ fn main() {
           }
         }
       });
+
+      // Start background scanning process
+      let app_state_scanning = app_state_clone.clone();
+      tauri::async_runtime::spawn(async move {
+        scanning::start_scanning_process(app_state_scanning).await;
+      });
+
       // Hide Dock icon as we won't have windows
       #[cfg(target_os = "macos")]
       app.set_activation_policy(tauri::ActivationPolicy::Accessory);
