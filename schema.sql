@@ -168,7 +168,7 @@ CREATE INDEX IF NOT EXISTS idx_video_versions_item
 --   mtime       : file mtime (epoch seconds)
 --   part_index  : playback order within the version
 --   duration_ms : per-file duration (ms)
---   fast_hash   : cheap content signature (e.g., SHA1(first 4–8KiB))
+--   fast_hash   : cheap content signature (e.g., xxhash64(some segments of the file))
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS video_parts (
   id               INTEGER PRIMARY KEY AUTOINCREMENT,

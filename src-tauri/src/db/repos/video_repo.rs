@@ -172,4 +172,177 @@ impl VideoRepo {
         
         Ok(video_part)
     }
+    
+    /// Get video parts by size and fast_hash
+    pub async fn get_video_parts_by_size_and_hash(&self, size: i64, fast_hash: &str) -> Result<Vec<VideoPart>> {
+        let video_parts = sqlx::query_as::<_, VideoPart>(
+            "SELECT * FROM video_parts WHERE size = ? AND fast_hash = ?"
+        )
+        .bind(size)
+        .bind(fast_hash)
+        .fetch_all(&self.pool)
+        .await?;
+        
+        Ok(video_parts)
+    }
+    
+    /// Get video items by title
+    pub async fn get_video_items_by_title(&self, index_id: i64, title: &str) -> Result<Vec<VideoItem>> {
+        let video_items = sqlx::query_as::<_, VideoItem>(
+            "SELECT * FROM video_items WHERE index_id = ? AND title = ?"
+        )
+        .bind(index_id)
+        .bind(title)
+        .fetch_all(&self.pool)
+        .await?;
+        
+        Ok(video_items)
+    }
+    
+    /// Update video part updated_at timestamp
+    pub async fn update_video_part_updated_at(&self, id: i64) -> Result<()> {
+        sqlx::query("UPDATE video_parts SET updated_at = ? WHERE id = ?")
+            .bind(chrono::Utc::now().timestamp())
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        
+        Ok(())
+    }
+    
+    /// Update video part path and mtime
+    pub async fn update_video_part_path(&self, id: i64, path: String, mtime: i64) -> Result<()> {
+        sqlx::query("UPDATE video_parts SET path = ?, mtime = ?, updated_at = ? WHERE id = ?")
+            .bind(&path)
+            .bind(mtime)
+            .bind(chrono::Utc::now().timestamp())
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        
+        Ok(())
+    }
+    
+    /// Add a new video version with optional parameters
+    pub async fn add_video_version_with_params(
+        &self, 
+        item_id: i64,
+        edition: Option<String>,
+        source: Option<String>,
+        container: Option<String>,
+        resolution: Option<String>,
+        hdr: Option<i64>,
+        audio_channels: Option<i64>,
+        bitrate: Option<i64>,
+        runtime_ms: Option<i64>,
+        probe_version: Option<String>
+    ) -> Result<i64> {
+        let video_version = VideoVersion {
+            id: 0,
+            item_id,
+            edition,
+            source,
+            container,
+            resolution,
+            hdr: hdr.unwrap_or(0),
+            audio_channels,
+            bitrate,
+            runtime_ms,
+            probe_version,
+            created_at: chrono::Utc::now().timestamp(),
+            updated_at: chrono::Utc::now().timestamp(),
+        };
+        
+        let result = sqlx::query(
+            "INSERT INTO video_versions (item_id, edition, source, container, resolution, hdr, audio_channels, bitrate, runtime_ms, probe_version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        .bind(video_version.item_id)
+        .bind(&video_version.edition)
+        .bind(&video_version.source)
+        .bind(&video_version.container)
+        .bind(&video_version.resolution)
+        .bind(video_version.hdr)
+        .bind(&video_version.audio_channels)
+        .bind(&video_version.bitrate)
+        .bind(&video_version.runtime_ms)
+        .bind(&video_version.probe_version)
+        .bind(video_version.created_at)
+        .bind(video_version.updated_at)
+        .execute(&self.pool)
+        .await?;
+        
+        Ok(result.last_insert_rowid())
+    }
+    
+    /// Add a new video part with optional parameters
+    pub async fn add_video_part_with_params(
+        &self,
+        version_id: i64,
+        path: String,
+        size: Option<i64>,
+        mtime: Option<i64>,
+        part_index: i64,
+        duration_ms: Option<i64>,
+        fast_hash: Option<String>
+    ) -> Result<i64> {
+        let video_part = VideoPart {
+            id: 0,
+            version_id,
+            path,
+            size,
+            mtime,
+            part_index,
+            duration_ms,
+            fast_hash,
+            created_at: chrono::Utc::now().timestamp(),
+            updated_at: chrono::Utc::now().timestamp(),
+        };
+        
+        let result = sqlx::query(
+            "INSERT INTO video_parts (version_id, path, size, mtime, part_index, duration_ms, fast_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        .bind(video_part.version_id)
+        .bind(&video_part.path)
+        .bind(&video_part.size)
+        .bind(&video_part.mtime)
+        .bind(video_part.part_index)
+        .bind(&video_part.duration_ms)
+        .bind(&video_part.fast_hash)
+        .bind(video_part.created_at)
+        .bind(video_part.updated_at)
+        .execute(&self.pool)
+        .await?;
+        
+        Ok(result.last_insert_rowid())
+    }
+    
+    /// Delete a video item
+    pub async fn delete_video_item(&self, id: i64) -> Result<()> {
+        sqlx::query("DELETE FROM video_items WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        
+        Ok(())
+    }
+    
+    /// Delete a video version
+    pub async fn delete_video_version(&self, id: i64) -> Result<()> {
+        sqlx::query("DELETE FROM video_versions WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        
+        Ok(())
+    }
+    
+    /// Delete a video part
+    pub async fn delete_video_part(&self, id: i64) -> Result<()> {
+        sqlx::query("DELETE FROM video_parts WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        
+        Ok(())
+    }
 }

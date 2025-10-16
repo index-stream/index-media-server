@@ -1,5 +1,6 @@
 use crate::api::state::AppState;
 use crate::db::repos::IndexesRepo;
+use crate::scanning::video_scanning::scan_video_index;
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -38,7 +39,15 @@ async fn process_scanning_cycle(app_state: &AppState) -> Result<bool, anyhow::Er
         
         for index in scanning_indexes {
             println!("🔄 Restarting scan for index '{}' (ID: {})", index.name, index.id);
-            scan_index(&indexes_repo, &index).await?;
+            match index.r#type.as_str() {
+                "videos" => {
+                    scan_video_index(&indexes_repo, &index, app_state).await?;
+                }
+                _ => {
+                    println!("⚠️  Index type '{}' not supported yet for index '{}' (ID: {})", index.r#type, index.name, index.id);
+                    indexes_repo.update_scan_status(index.id, "failed".to_string()).await?;
+                }
+            }
         }
         return Ok(true);
     }
@@ -64,31 +73,25 @@ async fn process_scanning_cycle(app_state: &AppState) -> Result<bool, anyhow::Er
     indexes_repo.update_scan_status(oldest_index.id, "scanning".to_string()).await?;
     
     // Scan the index
-    if let Err(e) = scan_index(&indexes_repo, &oldest_index).await {
-        eprintln!("❌ Failed to scan index '{}' (ID: {}): {}", oldest_index.name, oldest_index.id, e);
-        // Reset status back to queued so it can be retried later
-        if let Err(reset_err) = indexes_repo.update_scan_status(oldest_index.id, "failed".to_string()).await {
-            eprintln!("❌ Failed to reset scan status for index '{}' (ID: {}): {}", oldest_index.name, oldest_index.id, reset_err);
+    match oldest_index.r#type.as_str() {
+        "videos" => {
+            if let Err(e) = scan_video_index(&indexes_repo, &oldest_index, app_state).await {
+                eprintln!("❌ Failed to scan index '{}' (ID: {}): {}", oldest_index.name, oldest_index.id, e);
+                // Reset status back to failed so it can be retried later
+                if let Err(reset_err) = indexes_repo.update_scan_status(oldest_index.id, "failed".to_string()).await {
+                    eprintln!("❌ Failed to reset scan status for index '{}' (ID: {}): {}", oldest_index.name, oldest_index.id, reset_err);
+                }
+                return Ok(false); // Return false so we wait before trying again
+            }
         }
-        return Ok(false); // Return false so we wait before trying again
+        _ => {
+            println!("⚠️  Index type '{}' not supported yet for index '{}' (ID: {})", oldest_index.r#type, oldest_index.name, oldest_index.id);
+            if let Err(e) = indexes_repo.update_scan_status(oldest_index.id, "failed".to_string()).await {
+                eprintln!("❌ Failed to set scan status to 'failed' for index '{}' (ID: {}): {}", oldest_index.name, oldest_index.id, e);
+            }
+            return Ok(false); // Return false so we wait before trying again
+        }
     }
     
     Ok(true)
-}
-
-/// Scan a single index (placeholder implementation)
-async fn scan_index(indexes_repo: &IndexesRepo, index: &crate::db::models::Index) -> Result<(), anyhow::Error> {
-    println!("🔍 TODO: Scanning index '{}' (ID: {})", index.name, index.id);
-    
-    // TODO: Implement actual scanning logic here
-    // For now, just simulate some work
-    sleep(Duration::from_secs(2)).await;
-    
-    // Update status to done and set last_scanned_at to current time
-    let now = chrono::Utc::now().timestamp();
-    indexes_repo.update_scan_status_with_timestamp(index.id, "done".to_string(), Some(now)).await?;
-    
-    println!("✅ Completed scan for index '{}' (ID: {})", index.name, index.id);
-    
-    Ok(())
 }
