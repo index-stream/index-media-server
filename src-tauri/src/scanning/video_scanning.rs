@@ -1,6 +1,7 @@
 use crate::api::state::AppState;
 use crate::db::repos::{IndexesRepo, VideoRepo};
 use crate::utils::hash::calculate_fast_hash;
+use crate::utils::classifier::{classify_path, MediaType};
 use std::path::Path;
 use serde_json::Value;
 
@@ -113,6 +114,43 @@ async fn scan_folder_recursive(folder_path: &str, video_repo: &VideoRepo, index_
                     if let Some(ext_str) = extension.to_str() {
                         let ext_lower = ext_str.to_lowercase();
                         if video_extensions.contains(&ext_lower.as_str()) {
+                            // Classify the video file
+                            let classified = classify_path(entry_path.to_string_lossy().as_ref());
+                            println!("🎥 {} -> {:?}", 
+                                entry_path.file_name().unwrap_or_default().to_string_lossy(),
+                                classified.media_type
+                            );
+                            
+                            match classified.media_type {
+                                MediaType::Extra => {
+                                    if let Some(extra) = classified.extra {
+                                        println!("   🎬 Extra: {}", extra.path);
+                                    }
+                                }
+                                MediaType::TvEpisode => {
+                                    if let Some(tv) = classified.tv_episode {
+                                        println!("   📺 TV: {} S{}E{} (year: {:?})", 
+                                            tv.show_name,
+                                            tv.season,
+                                            tv.episode,
+                                            tv.year.map_or("None".to_string(), |y| y.to_string())
+                                        );
+                                    }
+                                }
+                                MediaType::Movie => {
+                                    if let Some(movie) = classified.movie {
+                                        println!("   📽️  Movie: {} ({})", 
+                                            movie.title, 
+                                            movie.year.map_or("Unknown".to_string(), |y| y.to_string())
+                                        );
+                                    }
+                                }
+                                MediaType::Generic => {
+                                    if let Some(generic) = classified.generic {
+                                        println!("   📄 Generic: {}", generic.title);
+                                    }
+                                }
+                            }
                             // Process the video file with database operations
                             match process_video_file(&entry_path, video_repo, index_id).await {
                                 Ok(()) => {

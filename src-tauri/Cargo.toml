@@ -39,4 +39,9 @@ sha2 = "0.10"
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid"] }
 anyhow = "1.0"
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
+regex = "1.10"
+once_cell = "1.19"
+
+[dev-dependencies]
+pretty_assertions = "1.4"
 
