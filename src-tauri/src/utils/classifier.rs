@@ -279,7 +279,7 @@ fn detect_numbered_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
         };
         
         // Parse version and part after episode number
-        parse_version_and_part_after_episode(&path_parts.stem, &mut result);
+        parse_version_title_and_part_after_episode(&path_parts.stem, &mut result);
         result.external_ids = parse_external_ids(&path_parts.stem);
         
         println!("TODO: Finished parsing TV episode source folder: {}", source_folder);
@@ -317,7 +317,7 @@ fn detect_numbered_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
                 external_ids: HashMap::new(),
             };
             
-            parse_version_and_part_after_episode(&path_parts.stem, &mut result);
+            parse_version_title_and_part_after_episode(&path_parts.stem, &mut result);
             result.external_ids = parse_external_ids(&path_parts.stem);
             
             println!("TODO: Finished parsing TV episode source folder: {}", source_folder);
@@ -350,7 +350,7 @@ fn detect_numbered_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
                 external_ids: HashMap::new(),
             };
             
-            parse_version_and_part_after_episode(&path_parts.stem, &mut result);
+            parse_version_title_and_part_after_episode(&path_parts.stem, &mut result);
             result.external_ids = parse_external_ids(&path_parts.stem);
             
             println!("TODO: Finished parsing TV episode source folder: {}", source_folder);
@@ -384,7 +384,7 @@ fn detect_numbered_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
                 external_ids: HashMap::new(),
             };
             
-            parse_version_and_part_after_episode(&path_parts.stem, &mut result);
+            parse_version_title_and_part_after_episode(&path_parts.stem, &mut result);
             result.external_ids = parse_external_ids(&path_parts.stem);
             
             println!("TODO: Finished parsing TV episode source folder: {}", source_folder);
@@ -412,7 +412,7 @@ fn detect_numbered_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
                 external_ids: HashMap::new(),
             };
             
-            parse_version_and_part_after_episode(&path_parts.stem, &mut result);
+            parse_version_title_and_part_after_episode(&path_parts.stem, &mut result);
             result.external_ids = parse_external_ids(&path_parts.stem);
             
             println!("TODO: Finished parsing TV episode source folder: {}", source_folder);
@@ -467,7 +467,7 @@ fn detect_date_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
         external_ids: HashMap::new(),
     };
     
-    parse_version_and_part_after_episode(&path_parts.stem, &mut result);
+    parse_version_title_and_part_after_episode(&path_parts.stem, &mut result);
     result.external_ids = parse_external_ids(&path_parts.stem);
     
     println!("TODO: Finished parsing TV episode source folder: {}", source_folder);
@@ -574,7 +574,7 @@ fn extract_show_name(folders: &[String], stem: &str) -> String {
     cleaned.trim().to_string()
 }
 
-fn parse_version_and_part_after_episode(stem: &str, tv_info: &mut TvEpisodeInfo) {
+fn parse_version_title_and_part_after_episode(stem: &str, tv_info: &mut TvEpisodeInfo) {
     // Find the episode pattern and parse everything after it
     let episode_pattern = if TV_SXXEYY.is_match(stem) {
         TV_SXXEYY.find(stem).map(|m| m.end())
@@ -588,7 +588,7 @@ fn parse_version_and_part_after_episode(stem: &str, tv_info: &mut TvEpisodeInfo)
     
     if let Some(end_pos) = episode_pattern {
         let after_episode = &stem[end_pos..];
-        parse_version_and_part_from_suffix_tv(after_episode, tv_info);
+        parse_version_title_and_part_from_suffix_tv(after_episode, tv_info);
     }
 }
 
@@ -608,15 +608,21 @@ fn parse_version_and_part_after_year(stem: &str, movie_info: &mut MovieInfo) {
     }
 }
 
-fn parse_version_and_part_from_suffix_tv(suffix: &str, tv_info: &mut TvEpisodeInfo) {
+fn parse_version_title_and_part_from_suffix_tv(suffix: &str, tv_info: &mut TvEpisodeInfo) {
     // Parse version
     if let Some(caps) = VERSION_BRACES.captures(suffix) {
         if let Some(version_match) = caps.get(1) {
             tv_info.version = Some(version_match.as_str().to_string());
         }
-    } else if let Some(caps) = VERSION_DASH.captures(suffix) {
+    }
+    if let Some(caps) = VERSION_DASH.captures(suffix) {
         if let Some(version_match) = caps.get(1) {
-            tv_info.version = Some(version_match.as_str().to_string());
+            //If version already set, then this is the title
+            if tv_info.version.is_some() {
+                tv_info.title = Some(version_match.as_str().to_string());
+            } else {
+                tv_info.version = Some(version_match.as_str().to_string());
+            }
         }
     } else if let Some(caps) = VERSION_BRACKETS.captures(suffix) {
         if let Some(version_match) = caps.get(1) {
