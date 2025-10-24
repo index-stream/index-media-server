@@ -119,6 +119,7 @@ pub struct VideoItem {
     pub sort_title: Option<String>,
     pub year: Option<i64>,
     pub number: Option<i64>, // season or episode number
+    pub source_path: Option<String>, // root folder path for all content
     pub metadata: String, // JSON string
     pub added_at: i64, // Unix timestamp
     pub latest_added_at: i64, // Unix timestamp
@@ -133,6 +134,7 @@ impl VideoItem {
         r#type: String,
         title: String,
         parent_id: Option<i64>,
+        source_path: Option<String>,
         metadata: Value,
     ) -> Self {
         let now = Utc::now().timestamp();
@@ -145,6 +147,7 @@ impl VideoItem {
             sort_title: None,
             year: None,
             number: None,
+            source_path,
             metadata: serde_json::to_string(&metadata).unwrap_or_else(|_| "{}".to_string()),
             added_at: now,
             latest_added_at: now,

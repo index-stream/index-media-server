@@ -17,11 +17,11 @@ impl VideoRepo {
     // Video Items
     
     /// Add a new video item
-    pub async fn add_video_item(&self, index_id: i64, r#type: String, title: String, parent_id: Option<i64>, metadata: Value) -> Result<i64> {
-        let video_item = VideoItem::new(index_id, r#type, title, parent_id, metadata);
+    pub async fn add_video_item(&self, index_id: i64, r#type: String, title: String, parent_id: Option<i64>, source_path: Option<String>, metadata: Value) -> Result<i64> {
+        let video_item = VideoItem::new(index_id, r#type, title, parent_id, source_path, metadata);
         
         let result = sqlx::query(
-            "INSERT INTO video_items (index_id, type, parent_id, title, sort_title, year, number, metadata, added_at, latest_added_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO video_items (index_id, type, parent_id, title, sort_title, year, number, source_path, metadata, added_at, latest_added_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(video_item.index_id)
         .bind(&video_item.r#type)
@@ -30,11 +30,38 @@ impl VideoRepo {
         .bind(&video_item.sort_title)
         .bind(&video_item.year)
         .bind(&video_item.number)
+        .bind(&video_item.source_path)
         .bind(&video_item.metadata)
         .bind(video_item.added_at)
         .bind(video_item.latest_added_at)
         .bind(video_item.created_at)
         .bind(video_item.updated_at)
+        .execute(&self.pool)
+        .await?;
+        
+        Ok(result.last_insert_rowid())
+    }
+    
+    /// Add a video item with number
+    pub async fn add_video_item_with_number(&self, index_id: i64, r#type: String, title: String, parent_id: Option<i64>, source_path: Option<String>, number: Option<i32>, metadata: Value) -> Result<i64> {
+        let now = chrono::Utc::now().timestamp();
+        
+        let result = sqlx::query(
+            "INSERT INTO video_items (index_id, type, parent_id, title, sort_title, year, number, source_path, metadata, added_at, latest_added_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        .bind(index_id)
+        .bind(&r#type)
+        .bind(&parent_id)
+        .bind(&title)
+        .bind(&None::<String>) // sort_title
+        .bind(&None::<i32>) // year
+        .bind(&number)
+        .bind(&source_path)
+        .bind(&serde_json::to_string(&metadata).unwrap_or_else(|_| "{}".to_string()))
+        .bind(now)
+        .bind(now)
+        .bind(now)
+        .bind(now)
         .execute(&self.pool)
         .await?;
         
@@ -198,6 +225,31 @@ impl VideoRepo {
         
         Ok(video_items)
     }
+
+    /// Get video items by parent_id
+    pub async fn get_video_items_by_parent(&self, parent_id: i64) -> Result<Vec<VideoItem>> {
+        let video_items = sqlx::query_as::<_, VideoItem>(
+            "SELECT * FROM video_items WHERE parent_id = ?"
+        )
+        .bind(parent_id)
+        .fetch_all(&self.pool)
+        .await?;
+        
+        Ok(video_items)
+    }
+    
+    /// Get video items by parent_id and number
+    pub async fn get_video_items_by_parent_and_number(&self, parent_id: i64, number: i32) -> Result<Vec<VideoItem>> {
+        let video_items = sqlx::query_as::<_, VideoItem>(
+            "SELECT * FROM video_items WHERE parent_id = ? AND number = ?"
+        )
+        .bind(parent_id)
+        .bind(number)
+        .fetch_all(&self.pool)
+        .await?;
+        
+        Ok(video_items)
+    }
     
     /// Update video part updated_at timestamp
     pub async fn update_video_part_updated_at(&self, id: i64) -> Result<()> {
@@ -339,6 +391,72 @@ impl VideoRepo {
     /// Delete a video part
     pub async fn delete_video_part(&self, id: i64) -> Result<()> {
         sqlx::query("DELETE FROM video_parts WHERE id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        
+        Ok(())
+    }
+    
+    /// Get video items by source path
+    pub async fn get_video_items_by_source_path(&self, index_id: i64, source_path: &str) -> Result<Vec<VideoItem>> {
+        let video_items = sqlx::query_as::<_, VideoItem>(
+            "SELECT * FROM video_items WHERE index_id = ? AND source_path = ? ORDER BY latest_added_at DESC"
+        )
+        .bind(index_id)
+        .bind(source_path)
+        .fetch_all(&self.pool)
+        .await?;
+        
+        Ok(video_items)
+    }
+    
+    /// Update video item source path
+    pub async fn update_video_item_source_path(&self, id: i64, source_path: Option<String>) -> Result<()> {
+        sqlx::query("UPDATE video_items SET source_path = ?, updated_at = strftime('%s','now') WHERE id = ?")
+            .bind(&source_path)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        
+        Ok(())
+    }
+    
+    /// Get video part by ID
+    pub async fn get_video_part_by_id(&self, id: i64) -> Result<Option<VideoPart>> {
+        let video_part = sqlx::query_as::<_, VideoPart>("SELECT * FROM video_parts WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
+        
+        Ok(video_part)
+    }
+    
+    /// Get video version by ID
+    pub async fn get_video_version_by_id(&self, id: i64) -> Result<Option<VideoVersion>> {
+        let video_version = sqlx::query_as::<_, VideoVersion>("SELECT * FROM video_versions WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
+        
+        Ok(video_version)
+    }
+    
+    /// Update video version item ID
+    pub async fn update_video_version_item_id(&self, id: i64, item_id: i64) -> Result<()> {
+        sqlx::query("UPDATE video_versions SET item_id = ?, updated_at = strftime('%s','now') WHERE id = ?")
+            .bind(item_id)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        
+        Ok(())
+    }
+    
+    /// Update video part version ID
+    pub async fn update_video_part_version_id(&self, id: i64, version_id: i64) -> Result<()> {
+        sqlx::query("UPDATE video_parts SET version_id = ?, updated_at = strftime('%s','now') WHERE id = ?")
+            .bind(version_id)
             .bind(id)
             .execute(&self.pool)
             .await?;

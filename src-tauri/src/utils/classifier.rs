@@ -85,12 +85,13 @@ pub enum MediaType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExtraInfo {
     pub path: String,
+    pub extra_type: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TvEpisodeInfo {
     pub show_name: String,
-    pub source_folder: String,
+    pub source_path: String,
     pub season: i32,
     pub episode: i32,
     pub title: Option<String>,
@@ -105,7 +106,7 @@ pub struct TvEpisodeInfo {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MovieInfo {
     pub title: String,
-    pub source_folder: String,
+    pub source_path: String,
     pub year: Option<i32>,
     pub part: Option<i32>,
     pub version: Option<String>,
@@ -115,6 +116,22 @@ pub struct MovieInfo {
 #[derive(Debug, Clone, PartialEq)]
 pub struct GenericInfo {
     pub title: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MovieExtra {
+    pub title: String,
+    pub source_path: String,
+    pub extra_type: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShowExtra {
+    pub title: String,
+    pub source_path: String,
+    pub season: Option<i32>,
+    pub episode: Option<i32>,
+    pub extra_type: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -143,7 +160,7 @@ pub fn classify_path(full_path: &str) -> ClassificationResult {
     }
     
     // 2. Check for numbered TV episodes
-    if let Some(tv) = detect_numbered_tv(&path_parts) {
+    if let Some(tv) = detect_numbered_tv(&path_parts, full_path) {
         return ClassificationResult {
             media_type: MediaType::TvEpisode,
             extra: None,
@@ -154,7 +171,7 @@ pub fn classify_path(full_path: &str) -> ClassificationResult {
     }
     
     // 3. Check for air date based TV shows
-    if let Some(tv) = detect_date_tv(&path_parts) {
+    if let Some(tv) = detect_date_tv(&path_parts, full_path) {
         return ClassificationResult {
             media_type: MediaType::TvEpisode,
             extra: None,
@@ -165,7 +182,7 @@ pub fn classify_path(full_path: &str) -> ClassificationResult {
     }
     
     // 4. Check for movies
-    if let Some(movie) = detect_movie(&path_parts) {
+    if let Some(movie) = detect_movie(&path_parts, full_path) {
         return ClassificationResult {
             media_type: MediaType::Movie,
             extra: None,
@@ -222,29 +239,47 @@ fn parse_path(full_path: &str) -> PathParts {
 fn detect_extra(path_parts: &PathParts) -> Option<ExtraInfo> {
     // Check folder names (exact match, case insensitive)
     let extra_folders = [
-        "behind the scenes", "deleted scenes", "interviews", "scenes",
-        "samples", "shorts", "featurettes", "clips", "others", "extras", "trailers"
+        ("behind the scenes", "behindthescenes"),
+        ("deleted scenes", "deleted"),
+        ("interviews", "interview"),
+        ("scenes", "scene"),
+        ("samples", "sample"),
+        ("shorts", "short"),
+        ("featurettes", "featurette"),
+        ("clips", "clip"),
+        ("others", "other"),
+        ("extras", "extra"),
+        ("trailers", "trailer")
     ];
     
     for folder in &path_parts.folders {
-        if extra_folders.iter().any(|&extra_folder| 
-            folder.to_lowercase() == extra_folder.to_lowercase()) {
-            return Some(ExtraInfo {
-                path: format!("{}/{}", path_parts.folders.join("/"), path_parts.filename),
-            });
+        for &(folder_name, extra_type) in &extra_folders {
+            if folder.to_lowercase() == folder_name.to_lowercase() {
+                return Some(ExtraInfo {
+                    path: format!("/{}/{}", path_parts.folders.join("/"), path_parts.filename),
+                    extra_type: extra_type.to_string(),
+                });
+            }
         }
     }
     
     // Check filename suffixes (exact match within string)
     let extra_suffixes = [
-        "-behindthescenes", "-deleted", "-featurette", "-interview",
-        "-scene", "-short", "-trailer", "-other"
+        ("-behindthescenes", "behindthescenes"),
+        ("-deleted", "deleted"),
+        ("-featurette", "featurette"),
+        ("-interview", "interview"),
+        ("-scene", "scene"),
+        ("-short", "short"),
+        ("-trailer", "trailer"),
+        ("-other", "other")
     ];
     
-    for suffix in &extra_suffixes {
+    for &(suffix, extra_type) in &extra_suffixes {
         if path_parts.stem.to_lowercase().contains(suffix) {
             return Some(ExtraInfo {
-                path: format!("{}/{}", path_parts.folders.join("/"), path_parts.filename),
+                path: format!("/{}/{}", path_parts.folders.join("/"), path_parts.filename),
+                extra_type: extra_type.to_string(),
             });
         }
     }
@@ -254,19 +289,19 @@ fn detect_extra(path_parts: &PathParts) -> Option<ExtraInfo> {
 
 // ---------- TV episode detection ----------
 
-fn detect_numbered_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
+fn detect_numbered_tv(path_parts: &PathParts, original_path: &str) -> Option<TvEpisodeInfo> {
     // Check for SxEy format in filename
     if let Some(caps) = TV_SXXEYY.captures(&path_parts.stem) {
         let season = caps.get(1)?.as_str().parse::<i32>().ok()?;
         let episode = caps.get(2)?.as_str().parse::<i32>().ok()?;
         let ep_end = caps.get(3).and_then(|m| m.as_str().parse::<i32>().ok());
         
-        let source_folder = find_source_folder(&path_parts.folders);
+        let source_path = find_source_path(&path_parts.folders, original_path);
         let show_name = extract_show_name(&path_parts.folders, &path_parts.stem);
         
         let mut result = TvEpisodeInfo {
             show_name,
-            source_folder: source_folder.clone(),
+            source_path: source_path.clone(),
             season,
             episode,
             title: None,
@@ -282,7 +317,7 @@ fn detect_numbered_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
         parse_version_title_and_part_after_episode(&path_parts.stem, &mut result);
         result.external_ids = parse_external_ids(&path_parts.stem);
         
-        println!("TODO: Finished parsing TV episode source folder: {}", source_folder);
+        println!("TODO: Finished parsing TV episode source folder: {}", source_path);
         return Some(result);
     }
     
@@ -295,17 +330,12 @@ fn detect_numbered_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
             let episode = caps.get(1)?.as_str().parse::<i32>().ok()?;
             let ep_end = caps.get(2).and_then(|m| m.as_str().parse::<i32>().ok());
             
-            let source_folder = if season_folder_idx > 0 {
-                path_parts.folders[season_folder_idx - 1].clone()
-            } else {
-                "".to_string()
-            };
-            
+            let source_path = find_source_path(&path_parts.folders, original_path);
             let show_name = extract_show_name(&path_parts.folders, &path_parts.stem);
             
             let mut result = TvEpisodeInfo {
                 show_name,
-                source_folder: source_folder.clone(),
+                source_path: source_path.clone(),
                 season,
                 episode,
                 title: None,
@@ -320,7 +350,7 @@ fn detect_numbered_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
             parse_version_title_and_part_after_episode(&path_parts.stem, &mut result);
             result.external_ids = parse_external_ids(&path_parts.stem);
             
-            println!("TODO: Finished parsing TV episode source folder: {}", source_folder);
+            println!("TODO: Finished parsing TV episode source folder: {}", source_path);
             return Some(result);
         }
         
@@ -328,17 +358,12 @@ fn detect_numbered_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
             let episode = caps.get(1)?.as_str().parse::<i32>().ok()?;
             let ep_end = caps.get(2).and_then(|m| m.as_str().parse::<i32>().ok());
             
-            let source_folder = if season_folder_idx > 0 {
-                path_parts.folders[season_folder_idx - 1].clone()
-            } else {
-                "".to_string()
-            };
-            
+            let source_path = find_source_path(&path_parts.folders, original_path);
             let show_name = extract_show_name(&path_parts.folders, &path_parts.stem);
             
             let mut result = TvEpisodeInfo {
                 show_name,
-                source_folder: source_folder.clone(),
+                source_path: source_path.clone(),
                 season,
                 episode,
                 title: None,
@@ -353,7 +378,7 @@ fn detect_numbered_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
             parse_version_title_and_part_after_episode(&path_parts.stem, &mut result);
             result.external_ids = parse_external_ids(&path_parts.stem);
             
-            println!("TODO: Finished parsing TV episode source folder: {}", source_folder);
+            println!("TODO: Finished parsing TV episode source folder: {}", source_path);
             return Some(result);
         }
     }
@@ -367,12 +392,12 @@ fn detect_numbered_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
             let episode = caps.get(1)?.as_str().parse::<i32>().ok()?;
             let ep_end = caps.get(2).and_then(|m| m.as_str().parse::<i32>().ok());
             
-            let source_folder = find_source_folder(&path_parts.folders);
+            let source_path = find_source_path(&path_parts.folders, original_path);
             let show_name = extract_show_name(&path_parts.folders, &path_parts.stem);
             
             let mut result = TvEpisodeInfo {
                 show_name,
-                source_folder: source_folder.clone(),
+                source_path: source_path.clone(),
                 season: 0, // Specials are season 0
                 episode,
                 title: None,
@@ -387,7 +412,7 @@ fn detect_numbered_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
             parse_version_title_and_part_after_episode(&path_parts.stem, &mut result);
             result.external_ids = parse_external_ids(&path_parts.stem);
             
-            println!("TODO: Finished parsing TV episode source folder: {}", source_folder);
+            println!("TODO: Finished parsing TV episode source folder: {}", source_path);
             return Some(result);
         }
         
@@ -395,12 +420,12 @@ fn detect_numbered_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
             let episode = caps.get(1)?.as_str().parse::<i32>().ok()?;
             let ep_end = caps.get(2).and_then(|m| m.as_str().parse::<i32>().ok());
             
-            let source_folder = find_source_folder(&path_parts.folders);
+            let source_path = find_source_path(&path_parts.folders, original_path);
             let show_name = extract_show_name(&path_parts.folders, &path_parts.stem);
             
             let mut result = TvEpisodeInfo {
                 show_name,
-                source_folder: source_folder.clone(),
+                source_path: source_path.clone(),
                 season: 0, // Specials are season 0
                 episode,
                 title: None,
@@ -415,7 +440,7 @@ fn detect_numbered_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
             parse_version_title_and_part_after_episode(&path_parts.stem, &mut result);
             result.external_ids = parse_external_ids(&path_parts.stem);
             
-            println!("TODO: Finished parsing TV episode source folder: {}", source_folder);
+            println!("TODO: Finished parsing TV episode source folder: {}", source_path);
             return Some(result);
         }
         }
@@ -424,7 +449,7 @@ fn detect_numbered_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
     None
 }
 
-fn detect_date_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
+fn detect_date_tv(path_parts: &PathParts, original_path: &str) -> Option<TvEpisodeInfo> {
     // Check for date patterns in filename
     let date_match = DATE_ISO.captures(&path_parts.stem)
         .or_else(|| DATE_DMY.captures(&path_parts.stem))?;
@@ -443,7 +468,10 @@ fn detect_date_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
     
     let air_date = format!("{:04}-{:02}-{:02}", year, month, day);
     
-    let source_folder = find_source_folder(&path_parts.folders);
+    // Calculate episode number as epoch days (days since 1970-01-01)
+    let episode_number = days_since_epoch(year, month as u32, day as u32);
+    
+    let source_path = find_source_path(&path_parts.folders, original_path);
     let show_name = extract_show_name(&path_parts.folders, &path_parts.stem);
     
     // Check if there's a season folder
@@ -455,9 +483,9 @@ fn detect_date_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
     
     let mut result = TvEpisodeInfo {
         show_name,
-        source_folder: source_folder.clone(),
+        source_path: source_path.clone(),
         season,
-        episode: 0, // No episode number for date-based
+        episode: episode_number as i32, // Use epoch days as episode number
         title: None,
         ep_end: None,
         air_date: Some(air_date),
@@ -470,23 +498,23 @@ fn detect_date_tv(path_parts: &PathParts) -> Option<TvEpisodeInfo> {
     parse_version_title_and_part_after_episode(&path_parts.stem, &mut result);
     result.external_ids = parse_external_ids(&path_parts.stem);
     
-    println!("TODO: Finished parsing TV episode source folder: {}", source_folder);
+    println!("TODO: Finished parsing TV episode source folder: {}", source_path);
     Some(result)
 }
 
 // ---------- Movie detection ----------
 
-fn detect_movie(path_parts: &PathParts) -> Option<MovieInfo> {
+fn detect_movie(path_parts: &PathParts, original_path: &str) -> Option<MovieInfo> {
     // Check for year in parentheses
     if let Some(caps) = MOVIE_YEAR_PARENS.captures(&path_parts.stem) {
         let title = caps.get(1)?.as_str().trim().to_string();
         let year = caps.get(2)?.as_str().parse::<i32>().ok()?;
         
-        let source_folder = find_source_folder(&path_parts.folders);
+        let source_path = find_source_path(&path_parts.folders, original_path);
         
         let mut result = MovieInfo {
             title,
-            source_folder: source_folder.clone(),
+            source_path: source_path.clone(),
             year: Some(year),
             part: None,
             version: None,
@@ -496,7 +524,7 @@ fn detect_movie(path_parts: &PathParts) -> Option<MovieInfo> {
         parse_version_and_part_after_year(&path_parts.stem, &mut result);
         result.external_ids = parse_external_ids(&path_parts.stem);
         
-        println!("TODO: Finished parsing movie source folder: {}", source_folder);
+        println!("TODO: Finished parsing movie source folder: {}", source_path);
         return Some(result);
     }
     
@@ -505,11 +533,11 @@ fn detect_movie(path_parts: &PathParts) -> Option<MovieInfo> {
         let title = caps.get(1)?.as_str().trim().to_string();
         let year = caps.get(2)?.as_str().parse::<i32>().ok()?;
         
-        let source_folder = find_source_folder(&path_parts.folders);
+        let source_path = find_source_path(&path_parts.folders, original_path);
         
         let mut result = MovieInfo {
             title,
-            source_folder: source_folder.clone(),
+            source_path: source_path.clone(),
             year: Some(year),
             part: None,
             version: None,
@@ -519,25 +547,124 @@ fn detect_movie(path_parts: &PathParts) -> Option<MovieInfo> {
         parse_version_and_part_after_year(&path_parts.stem, &mut result);
         result.external_ids = parse_external_ids(&path_parts.stem);
         
-        println!("TODO: Finished parsing movie source folder: {}", source_folder);
+        println!("TODO: Finished parsing movie source folder: {}", source_path);
         return Some(result);
     }
     
     None
 }
 
-// ---------- Helper functions ----------
+// ---------- Extra classification ----------
 
-fn find_source_folder(folders: &[String]) -> String {
-    // Look for season folder and return its parent
-    if let Some(season_folder_idx) = find_season_folder(folders) {
-        if season_folder_idx > 0 {
-            return folders[season_folder_idx - 1].clone();
+/// Classify an extra as a movie extra
+pub fn classify_movie_extra(extra_info: &ExtraInfo, source_path: &str) -> Option<MovieExtra> {
+    // Extract title from the path, removing extra suffixes
+    let path_parts = parse_path(&extra_info.path);
+    let mut title = path_parts.stem.clone();
+    
+    // Remove extra suffixes from title
+    let extra_suffixes = [
+        "-behindthescenes", "-deleted", "-featurette", "-interview",
+        "-scene", "-short", "-trailer", "-other"
+    ];
+    
+    for suffix in &extra_suffixes {
+        if title.to_lowercase().ends_with(suffix) {
+            title = title[..title.len() - suffix.len()].trim().to_string();
+            break;
         }
     }
     
-    // Otherwise return the last folder (closest to file)
-    folders.last().cloned().unwrap_or_default()
+    Some(MovieExtra {
+        title,
+        source_path: source_path.to_string(),
+        extra_type: extra_info.extra_type.clone(),
+    })
+}
+
+/// Classify an extra as a show extra
+pub fn classify_show_extra(extra_info: &ExtraInfo, source_path: &str) -> Option<ShowExtra> {
+    // Extract title from the path, removing extra suffixes
+    let path_parts = parse_path(&extra_info.path);
+    let mut title = path_parts.stem.clone();
+    
+    // Remove extra suffixes from title
+    let extra_suffixes = [
+        "-behindthescenes", "-deleted", "-featurette", "-interview",
+        "-scene", "-short", "-trailer", "-other"
+    ];
+    
+    for suffix in &extra_suffixes {
+        if title.to_lowercase().ends_with(suffix) {
+            title = title[..title.len() - suffix.len()].trim().to_string();
+            break;
+        }
+    }
+    
+    // Determine if this is for a specific season/episode
+    let mut season = None;
+    let mut episode = None;
+    
+    // Check if we're in a season/episode folder
+    // Iterate in reverse order (deepest to shallowest) and limit to last 4 folders
+    let folders_to_check = path_parts.folders.iter().rev().take(4);
+    
+    for folder in folders_to_check {
+        // Check for SxEy or SxEpy patterns in folder names (prioritize episode patterns)
+        if let Some(caps) = TV_SXXEYY.captures(folder) {
+            season = caps.get(1).and_then(|m| m.as_str().parse::<i32>().ok());
+            episode = caps.get(2).and_then(|m| m.as_str().parse::<i32>().ok());
+            break;
+        }
+        
+        // Check for season folder
+        if let Some(caps) = SEASON_FOLDER.captures(folder) {
+            season = caps.get(1).and_then(|m| m.as_str().parse::<i32>().ok());
+            break;
+        }
+        
+        // Check for specials folder (season 0)
+        if folder.to_lowercase() == "special" || folder.to_lowercase() == "specials" {
+            season = Some(0);
+            break;
+        }
+    }
+    
+    Some(ShowExtra {
+        title,
+        source_path: source_path.to_string(),
+        season,
+        episode,
+        extra_type: extra_info.extra_type.clone(),
+    })
+}
+
+// ---------- Helper functions ----------
+
+/// Returns the number of days since the Unix epoch (1970-01-01).
+/// Dates before the epoch will return negative numbers.
+fn days_since_epoch(year: i32, month: u32, day: u32) -> i64 {
+    let epoch = chrono::NaiveDate::from_ymd_opt(1970, 1, 1).unwrap();
+    let date = chrono::NaiveDate::from_ymd_opt(year, month, day)
+        .expect("Invalid date");
+    (date - epoch).num_days()
+}
+
+fn find_source_path(folders: &[String], original_path: &str) -> String {
+    // Check if the original path was absolute (starts with "/")
+    let is_absolute = original_path.starts_with('/');
+    
+    // Look for season folder and return its parent path
+    if let Some(season_folder_idx) = find_season_folder(folders) {
+        if season_folder_idx > 0 {
+            let path = folders[..season_folder_idx].join("/");
+            return if is_absolute { format!("/{}", path) } else { path };
+        }
+    }
+    
+    // Otherwise return the full path to the last folder (closest to file)
+    let path = folders.join("/");
+    if is_absolute { format!("/{}", path) } else { path }
 }
 
 fn find_season_folder(folders: &[String]) -> Option<usize> {
@@ -772,9 +899,18 @@ mod tests {
 
     #[test]
     fn test_generic() {
-        let result = classify_path("Clips/GoPro Mountain Run.mp4");
+        let result = classify_path("Videos/GoPro Mountain Run.mp4");
         assert_eq!(result.media_type, MediaType::Generic);
         let generic = result.generic.unwrap();
         assert_eq!(generic.title, "GoPro Mountain Run.mp4");
+    }
+
+    #[test]
+    fn test_epoch_days_calculation() {
+        // Test epoch days calculation
+        assert_eq!(days_since_epoch(1970, 1, 1), 0);   // Unix epoch
+        assert_eq!(days_since_epoch(1970, 1, 2), 1);   // Day after epoch
+        assert_eq!(days_since_epoch(1969, 12, 31), -1); // Day before epoch
+        assert_eq!(days_since_epoch(2024, 10, 15), 20011); // Future date
     }
 }

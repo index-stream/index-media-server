@@ -64,16 +64,17 @@ CREATE TABLE IF NOT EXISTS indexes (
 
 -- ----------------------------------------------------------------------------
 -- VIDEO ITEMS — semantic works and hierarchy
--- type: 'video' | 'movie' | 'show' | 'season' | 'episode'
+-- type: 'video' | 'movie' | 'show' | 'season' | 'episode' | 'extra'
 -- Columns:
 --   id              : autoincrement surrogate key
 --   index_id        : FK to indexes.id (scoping all queries)
---   type            : what kind of node (movie/show/season/episode/other video)
+--   type            : what kind of node (movie/show/season/episode/other video/extra)
 --   parent_id       : hierarchy link (season->show, episode->season)
 --   title           : human-facing title
 --   sort_title      : normalized sort key (e.g., "Matrix, The")
 --   year            : quick integer filter; full dates live in metadata JSON
 --   number          : season or episode number depending on type
+--   source_path     : root folder path for all content of this video item
 --   metadata        : JSON (provider IDs like tmdb_id/tvdb_id, aka titles, etc.)
 --   added_at        : when THIS item was added (epoch seconds)
 --   latest_added_at : max(added_at) for THIS item AND all descendants (bubble-up)
@@ -82,7 +83,7 @@ CREATE TABLE IF NOT EXISTS indexes (
 CREATE TABLE IF NOT EXISTS video_items (
   id               INTEGER PRIMARY KEY AUTOINCREMENT,
   index_id         INTEGER NOT NULL REFERENCES indexes(id) ON DELETE CASCADE,
-  type             TEXT NOT NULL CHECK (type IN ('video','movie','show','season','episode')),
+  type             TEXT NOT NULL CHECK (type IN ('video','movie','show','season','episode','extra')),
   parent_id        INTEGER REFERENCES video_items(id) ON DELETE CASCADE,
 
   title            TEXT NOT NULL,
@@ -90,6 +91,7 @@ CREATE TABLE IF NOT EXISTS video_items (
   year             INTEGER,
 
   number           INTEGER,                              -- season or episode number (context by type)
+  source_path      TEXT,                                 -- root folder path for all content
 
   metadata         TEXT NOT NULL DEFAULT '{}'            -- JSON payload (tmdb_id, tvdb_id, etc.)
                      CHECK (json_valid(metadata)),
@@ -120,6 +122,9 @@ CREATE INDEX IF NOT EXISTS idx_video_items_index_year
 
 CREATE INDEX IF NOT EXISTS idx_video_items_index_latest_added
   ON video_items(index_id, latest_added_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_video_items_source_path
+  ON video_items(index_id, source_path);
 
 -- ----------------------------------------------------------------------------
 -- VIDEO VERSIONS — a specific digital release/encode of an item
