@@ -3,7 +3,7 @@
 //! This module handles temporary files used during video scanning to store
 //! new content and extras before processing them into the database.
 
-use crate::utils::classifier::{MediaType, TvEpisodeInfo, MovieInfo, ExtraInfo, GenericInfo};
+use crate::utils::video_classifier::{MediaType, TvEpisodeInfo, MovieInfo, ExtraInfo, GenericInfo};
 
 /// Temporary file data structures for new content
 #[derive(Debug, Clone)]

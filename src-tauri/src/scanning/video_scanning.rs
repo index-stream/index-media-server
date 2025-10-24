@@ -1,7 +1,7 @@
 use crate::api::state::AppState;
 use crate::db::repos::{IndexesRepo, VideoRepo};
 use crate::utils::hash::calculate_fast_hash;
-use crate::utils::classifier::{classify_path, MediaType, classify_movie_extra, classify_show_extra, MovieExtra, ShowExtra, GenericInfo};
+use crate::utils::video_classifier::{classify_path, MediaType, classify_movie_extra, classify_show_extra, MovieExtra, ShowExtra, GenericInfo};
 use crate::scanning::{TempFileManager, SourcePathTracker, TempVideoItem, TempExtraItem};
 use std::path::{Path, PathBuf};
 use serde_json::Value;
@@ -428,7 +428,7 @@ async fn add_movie_immediately(
     file_path: &Path,
     video_repo: &VideoRepo,
     index_id: i64,
-    _classified: crate::utils::classifier::ClassificationResult,
+    _classified: crate::utils::video_classifier::ClassificationResult,
     file_size: i64,
     mtime: i64,
     fast_hash: String,
@@ -550,7 +550,7 @@ async fn process_temp_video_item(
 /// Process a temporary movie item
 async fn process_temp_movie(
     item: &TempVideoItem,
-    movie: crate::utils::classifier::MovieInfo,
+    movie: crate::utils::video_classifier::MovieInfo,
     video_repo: &VideoRepo,
     index_id: i64,
 ) -> Result<(), anyhow::Error> {
@@ -603,7 +603,7 @@ async fn process_temp_movie(
 /// Process a temporary TV episode item
 async fn process_temp_tv_episode(
     item: &TempVideoItem,
-    tv: crate::utils::classifier::TvEpisodeInfo,
+    tv: crate::utils::video_classifier::TvEpisodeInfo,
     video_repo: &VideoRepo,
     index_id: i64,
 ) -> Result<(), anyhow::Error> {
@@ -714,7 +714,7 @@ async fn process_temp_tv_episode(
 /// Process a temporary generic item
 async fn process_temp_generic(
     item: &TempVideoItem,
-    generic: crate::utils::classifier::GenericInfo,
+    generic: crate::utils::video_classifier::GenericInfo,
     video_repo: &VideoRepo,
     index_id: i64,
 ) -> Result<(), anyhow::Error> {
